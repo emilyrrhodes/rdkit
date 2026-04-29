@@ -41,6 +41,9 @@ std::unique_ptr<Atom> makeMonomer(std::string_view name,
   // Provided monomer can be an unnamed monomer represented by a SMILES string,
   // indicated by is_smiles=True
   a->setProp(SMILES_MONOMER, is_smiles);
+  // This property allows monomers to be identified as monomers, distinguishing
+  // them from other atoms that may be present in the molecule.
+  a->setProp(IS_MONOMER, true);
 
   // Give canonicalization to monomers based on name
   // TODO: Canonicalize on name and class?
@@ -226,6 +229,12 @@ void MonomerMol::addAtomMonomerConnection(size_t atom_idx, size_t monomer_idx,
   const auto new_total = this->addBond(atom_idx, monomer_idx, bond_type);
   auto bond = this->getBondWithIdx(new_total - 1);
   bond->setProp(LINKAGE, linkage);
+
+  // Copy polymer_id to new atom
+  auto polymer_id = getPolymerId(this->getAtomWithIdx(monomer_idx));
+  auto *monomer_info = new ::RDKit::AtomMonomerInfo();
+  monomer_info->setChainId(polymer_id);
+  this->getAtomWithIdx(atom_idx)->setMonomerInfo(monomer_info);
 }
 
 unsigned int MonomerMol::addBond(unsigned int atomIdx1, unsigned int atomIdx2,

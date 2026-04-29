@@ -36,6 +36,40 @@ unsigned int getResidueNumber(const Atom* atom) {
     return monomer_info->getResidueNumber();
 }
 
+bool isMonomericMol(const ROMol& mol) {
+    for (const auto atom : mol.atoms()) {
+        if (!atom->hasProp(IS_MONOMER) || !atom->getProp<bool>(IS_MONOMER)) {
+            return false;
+        }
+    }
+    return mol.getNumAtoms() > 0;
+}
+
+bool isAtomisticMol(const ROMol& mol) {
+    for (const auto atom : mol.atoms()) {
+        if (atom->hasProp(IS_MONOMER) && atom->getProp<bool>(IS_MONOMER)) {
+            return false;
+        }
+    }
+    return mol.getNumAtoms() > 0;
+}
+
+bool isHybridMol(const ROMol& mol) {
+    bool hasMonomer = false;
+    bool hasAtomistic = false;
+    for (const auto atom : mol.atoms()) {
+        if (atom->hasProp(IS_MONOMER) && atom->getProp<bool>(IS_MONOMER)) {
+            hasMonomer = true;
+        } else {
+            hasAtomistic = true;
+        }
+        if (hasMonomer && hasAtomistic) {
+            return true;
+        }
+    }
+    return false;
+}
+
 namespace {
 
 void setResidueNumber(Atom* atom, int residue_number) {
