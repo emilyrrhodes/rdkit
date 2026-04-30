@@ -44,6 +44,7 @@ const std::string CROSS_LINKAGE{"R3-R3"};
 const std::string HYDROGEN_LINKAGE{"pair-pair"};
 
 // Monomer properties stored on atoms
+const std::string IS_MONOMER{"isMonomer"};
 const std::string BRANCH_MONOMER{"isBranchMonomer"};
 const std::string SMILES_MONOMER{"isSmilesMonomer"};
 
@@ -71,6 +72,12 @@ RDKIT_MONOMERMOL_EXPORT std::string getPolymerId(const Atom* atom);
 
 // Get the residue number for an atom
 RDKIT_MONOMERMOL_EXPORT unsigned int getResidueNumber(const Atom* atom);
+
+// State of the molecule: whether it contains atomistic atoms, monomer atoms, both, or neither
+enum class MolState { Atomistic, Monomeric, Hybrid, Empty };
+
+// Get the state of the molecule (atomistic, monomeric, hybrid, or empty)
+RDKIT_MONOMERMOL_EXPORT MolState getMolState(const ROMol& mol);
 
 //! MonomerMol is a molecule class for monomeric representations
 /*!

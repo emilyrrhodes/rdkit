@@ -411,3 +411,82 @@ TEST_CASE("Conversions") {
     CHECK(same_roundtrip_mol(*mol, *roundtrip, monomer_mol->getPolymerIds().size()));
   }
 }
+
+TEST_CASE("HybridMol") {
+  SECTION("createHybridMol") {
+    MonomerMol hybrid_mol;
+    auto midx1 = hybrid_mol.addMonomer("A", 1, "PEPTIDE", "PEPTIDE1");
+    auto a = std::make_unique<::RDKit::Atom>();
+    bool update_label = true;
+    bool take_ownership = true;
+    auto aidx2 = hybrid_mol.addAtom(a.release(), update_label, take_ownership);
+
+    hybrid_mol.addAtomMonomerConnection(
+        aidx2, midx1, "R0-R1",
+        ::RDKit::Bond::SINGLE);
+
+    CHECK(hybrid_mol.getNumAtoms() == 2);
+    CHECK(hybrid_mol.getNumBonds() == 1);
+  }
+
+  SECTION("hybridMolToAtomistic") {
+    MonomerMol hybrid_mol;
+    auto midx1 = hybrid_mol.addMonomer("A", 1, "PEPTIDE", "PEPTIDE1");
+    auto a = std::make_unique<::RDKit::Atom>();
+    bool update_label = false;
+    bool take_ownership = true;
+    auto aidx2 = hybrid_mol.addAtom(a.release(), update_label, take_ownership);
+
+    hybrid_mol.addAtomMonomerConnection(aidx2, midx1, "R0-R1",
+                                        ::RDKit::Bond::SINGLE);
+    auto atomistic_mol = toAtomistic(hybrid_mol);
+    CHECK(getMolState(*atomistic_mol) == MolState::Atomistic);
+    CHECK(atomistic_mol->getNumAtoms() == 7);
+    CHECK(atomistic_mol->getNumBonds() == 6);
+  }
+
+  SECTION("hybridMolToMonomeric") {
+    MonomerMol hybrid_mol;
+    auto midx1 = hybrid_mol.addMonomer("A", 1, "PEPTIDE", "PEPTIDE1");
+    auto a = std::make_unique<::RDKit::Atom>();
+    bool update_label = false;
+    bool take_ownership = true;
+    auto aidx2 = hybrid_mol.addAtom(a.release(), update_label, take_ownership);
+
+    hybrid_mol.addAtomMonomerConnection(aidx2, midx1, "R0-R1",
+                                        ::RDKit::Bond::SINGLE);
+    auto monomer_mol = toMonomeric(hybrid_mol);
+    CHECK(getMolState(*monomer_mol) == MolState::Monomeric);
+    CHECK(monomer_mol->getNumAtoms() == 2);
+    CHECK(monomer_mol->getNumBonds() == 1);
+  }
+
+  SECTION("roundtripHybridMol") {
+    MonomerMol hybrid_mol;
+    auto midx1 = hybrid_mol.addMonomer("A", 1, "PEPTIDE", "PEPTIDE1");
+    auto a = std::make_unique<::RDKit::Atom>();
+    bool update_label = false;
+    bool take_ownership = true;
+    auto aidx2 = hybrid_mol.addAtom(a.release(), update_label, take_ownership);
+
+    hybrid_mol.addAtomMonomerConnection(aidx2, midx1, "R0-R1",
+                                        ::RDKit::Bond::SINGLE);
+    auto atomistic_mol = toAtomistic(hybrid_mol);
+    auto monomer_mol = toMonomeric(hybrid_mol);
+    CHECK(same_roundtrip_mol(*atomistic_mol, *toAtomistic(*monomer_mol), 1));
+    CHECK(same_roundtrip_mol(*monomer_mol, *toMonomeric(*atomistic_mol), 1));
+  }
+
+  SECTION("hybridCheck") {
+    MonomerMol hybrid_mol;
+    auto midx1 = hybrid_mol.addMonomer("A", 1, "PEPTIDE", "PEPTIDE1");
+    auto a = std::make_unique<::RDKit::Atom>();
+    bool update_label = false;
+    bool take_ownership = true;
+    auto aidx2 = hybrid_mol.addAtom(a.release(), update_label, take_ownership);
+
+    hybrid_mol.addAtomMonomerConnection(aidx2, midx1, "R0-R1",
+                                        ::RDKit::Bond::SINGLE);
+    CHECK(getMolState(hybrid_mol) == MolState::Hybrid);
+  }
+}
