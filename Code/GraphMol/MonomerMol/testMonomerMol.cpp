@@ -433,7 +433,6 @@ TEST_CASE("HybridMol") {
     MonomerMol hybrid_mol;
     auto midx1 = hybrid_mol.addMonomer("A", 1, "PEPTIDE", "PEPTIDE1");
     auto a = std::make_unique<::RDKit::Atom>();
-    a->setProp(RDKit::common_properties::atomLabel, "atomisiticAtom");
     bool update_label = false;
     bool take_ownership = true;
     auto aidx2 = hybrid_mol.addAtom(a.release(), update_label, take_ownership);
@@ -441,7 +440,7 @@ TEST_CASE("HybridMol") {
     hybrid_mol.addAtomMonomerConnection(aidx2, midx1, "R0-R1",
                                         ::RDKit::Bond::SINGLE);
     auto atomistic_mol = toAtomistic(hybrid_mol);
-    CHECK(isAtomisticMol(*atomistic_mol));
+    CHECK(getMolState(*atomistic_mol) == MolState::Atomistic);
     CHECK(atomistic_mol->getNumAtoms() == 7);
     CHECK(atomistic_mol->getNumBonds() == 6);
   }
@@ -450,7 +449,6 @@ TEST_CASE("HybridMol") {
     MonomerMol hybrid_mol;
     auto midx1 = hybrid_mol.addMonomer("A", 1, "PEPTIDE", "PEPTIDE1");
     auto a = std::make_unique<::RDKit::Atom>();
-    a->setProp(RDKit::common_properties::atomLabel, "atomisiticAtom");
     bool update_label = false;
     bool take_ownership = true;
     auto aidx2 = hybrid_mol.addAtom(a.release(), update_label, take_ownership);
@@ -458,7 +456,7 @@ TEST_CASE("HybridMol") {
     hybrid_mol.addAtomMonomerConnection(aidx2, midx1, "R0-R1",
                                         ::RDKit::Bond::SINGLE);
     auto monomer_mol = toMonomeric(hybrid_mol);
-    CHECK(isMonomericMol(*monomer_mol));
+    CHECK(getMolState(*monomer_mol) == MolState::Monomeric);
     CHECK(monomer_mol->getNumAtoms() == 2);
     CHECK(monomer_mol->getNumBonds() == 1);
   }
@@ -467,7 +465,6 @@ TEST_CASE("HybridMol") {
     MonomerMol hybrid_mol;
     auto midx1 = hybrid_mol.addMonomer("A", 1, "PEPTIDE", "PEPTIDE1");
     auto a = std::make_unique<::RDKit::Atom>();
-    a->setProp(RDKit::common_properties::atomLabel, "atomisiticAtom");
     bool update_label = false;
     bool take_ownership = true;
     auto aidx2 = hybrid_mol.addAtom(a.release(), update_label, take_ownership);
@@ -484,16 +481,12 @@ TEST_CASE("HybridMol") {
     MonomerMol hybrid_mol;
     auto midx1 = hybrid_mol.addMonomer("A", 1, "PEPTIDE", "PEPTIDE1");
     auto a = std::make_unique<::RDKit::Atom>();
-    a->setProp(RDKit::common_properties::atomLabel, "atomisiticAtom");
     bool update_label = false;
     bool take_ownership = true;
     auto aidx2 = hybrid_mol.addAtom(a.release(), update_label, take_ownership);
 
     hybrid_mol.addAtomMonomerConnection(aidx2, midx1, "R0-R1",
                                         ::RDKit::Bond::SINGLE);
-
-    CHECK(isHybridMol(hybrid_mol));
-    CHECK(!isMonomericMol(hybrid_mol));
-    CHECK(!isAtomisticMol(hybrid_mol));
+    CHECK(getMolState(hybrid_mol) == MolState::Hybrid);
   }
 }

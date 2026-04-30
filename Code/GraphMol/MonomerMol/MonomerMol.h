@@ -73,14 +73,11 @@ RDKIT_MONOMERMOL_EXPORT std::string getPolymerId(const Atom* atom);
 // Get the residue number for an atom
 RDKIT_MONOMERMOL_EXPORT unsigned int getResidueNumber(const Atom* atom);
 
-// Returns true if all atoms are monomeric (no atomistic atoms present)
-RDKIT_MONOMERMOL_EXPORT bool isMonomericMol(const ROMol& mol);
+// State of the molecule: whether it contains atomistic atoms, monomer atoms, both, or neither
+enum class MolState { Atomistic, Monomeric, Hybrid, Empty };
 
-// Returns true if all atoms are atomistic (no monomeric atoms present)
-RDKIT_MONOMERMOL_EXPORT bool isAtomisticMol(const ROMol& mol);
-
-// Returns true if at least one monomeric and at least one atomistic atom are present
-RDKIT_MONOMERMOL_EXPORT bool isHybridMol(const ROMol& mol);
+// Get the state of the molecule (atomistic, monomeric, hybrid, or empty)
+RDKIT_MONOMERMOL_EXPORT MolState getMolState(const ROMol& mol);
 
 //! MonomerMol is a molecule class for monomeric representations
 /*!
