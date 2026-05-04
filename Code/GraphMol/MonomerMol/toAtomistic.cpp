@@ -92,6 +92,7 @@ void setPDBResidueInfo(RDKit::RWMol &new_monomer,
     res_info->setChainId(chain_id_str);
     res_info->setResidueNumber(residue_number);
     res_info->setResidueName(residue_name);
+    res_info->setMonomerClass(monomer_class);
     // to be consistent with RDKit's PDB writer
     res_info->setInsertionCode(" ");
 
