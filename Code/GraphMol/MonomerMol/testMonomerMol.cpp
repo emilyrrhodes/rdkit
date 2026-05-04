@@ -337,6 +337,20 @@ TEST_CASE("Conversions") {
     CHECK(smi1 == "C[C@H](N)C(=O)N1CCC[C@@H]1C(=O)N1CCC[C@H]1C(=O)O");
   }
 
+  SECTION("atomMonomerInfoRetainedAfterToAtomistic") {
+    MonomerMol monomer_mol;
+    auto midx1 = monomer_mol.addMonomer("A", 1, "PEPTIDE", "PEPTIDE1");
+    auto midx2 = monomer_mol.addMonomer("G");
+    monomer_mol.addConnection(midx1, midx2, BACKBONE_LINKAGE);
+
+    auto atomistic = toAtomistic(monomer_mol);
+    for (auto atom : atomistic->atoms()) {
+      const auto* info = atom->getMonomerInfo();
+      REQUIRE(info != nullptr);
+      CHECK(info->getMonomerClass() == "PEPTIDE");
+    }
+  }
+
   SECTION("toMonomeric1DNG") {
     std::string pdbfile = getenv("RDBASE");
     pdbfile += "/Code/GraphMol/MonomerMol/test_data/1dng.pdb";
