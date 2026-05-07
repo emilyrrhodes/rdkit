@@ -76,7 +76,10 @@ RDKIT_MONOMERMOL_EXPORT unsigned int getResidueNumber(const Atom* atom);
 // State of the molecule: whether it contains atomistic atoms, monomer atoms, both, or neither
 enum class MolState { Atomistic, Monomeric, Hybrid, Empty };
 
-// Get the state of the molecule (atomistic, monomeric, hybrid, or empty)
+// Get the state of the molecule (atomistic, monomeric, hybrid, or empty).
+// "Atomistic" means all atoms lack the IS_MONOMER/SMILES_MONOMER properties,
+// which includes plain ROMol/RWMol instances that were never constructed as
+// MonomerMols.
 RDKIT_MONOMERMOL_EXPORT MolState getMolState(const ROMol& mol);
 
 //! MonomerMol is a molecule class for monomeric representations
@@ -184,6 +187,24 @@ class RDKIT_MONOMERMOL_EXPORT MonomerMol : public ROMol {
    */
   size_t addMonomer(std::string_view name,
                     MonomerType monomer_type = MonomerType::REGULAR);
+
+  /*
+   * Add a plain (non-monomer) atom to the molecule.
+   *
+   * @param atomic_num The atomic number of the element
+   *
+   * @return The index of the added atom
+   */
+  size_t addPlainAtom(int atomic_num);
+
+  /*
+   * Add a plain (non-monomer) atom to the molecule.
+   *
+   * @param element The element symbol (e.g. "C", "N", "Fe")
+   *
+   * @return The index of the added atom
+   */
+  size_t addPlainAtom(const std::string &element);
 
   // ---- Connection Operations ----
 

@@ -17,7 +17,10 @@
 #include <GraphMol/MonomerInfo.h>
 #include <GraphMol/MolPickler.h>
 
+#include <GraphMol/PeriodicTable.h>
+
 #include <boost/functional/hash.hpp>
+#include <set>
 
 namespace RDKit {
 
@@ -27,7 +30,7 @@ namespace {
 std::unique_ptr<Atom> makeMonomer(std::string_view name,
                                   std::string_view chain_id,
                                   std::string_view monomer_class,
-                                  int residue_number, bool is_smiles) {
+                                  int residue_number, bool is_smiles, bool is_monomer=true) {
   auto a = std::make_unique<::RDKit::Atom>();
   std::string n{name};
   // Allows monomer names show up in image renderings
@@ -43,7 +46,7 @@ std::unique_ptr<Atom> makeMonomer(std::string_view name,
   a->setProp(SMILES_MONOMER, is_smiles);
   // This property allows monomers to be identified as monomers, distinguishing
   // them from other atoms that may be present in the molecule.
-  a->setProp(IS_MONOMER, true);
+  a->setProp(IS_MONOMER, is_monomer);
 
   // Give canonicalization to monomers based on name
   // TODO: Canonicalize on name and class?
@@ -69,6 +72,23 @@ std::pair<unsigned int, unsigned int> getAttchpts(const std::string &linkage) {
   }
   return {std::stoi(linkage.substr(1, dash - 1)),
           std::stoi(linkage.substr(dash + 2))};
+}
+
+std::string get_unused_chem_chain_id(const MonomerMol &mol) {
+  std::set<int> used_chem_ids;
+  for (const auto &pid : mol.getPolymerIds()) {
+    if (pid.size() >= 5 && pid.substr(0, 4) == "CHEM") {
+      try {
+        used_chem_ids.insert(std::stoi(pid.substr(4)));
+      } catch (const std::invalid_argument &) {
+      }
+    }
+  }
+  int chem_num = 1;
+  while (used_chem_ids.count(chem_num)) {
+    ++chem_num;
+  }
+  return "CHEM" + std::to_string(chem_num);
 }
 
 }  // anonymous namespace
@@ -229,12 +249,6 @@ void MonomerMol::addAtomMonomerConnection(size_t atom_idx, size_t monomer_idx,
   const auto new_total = this->addBond(atom_idx, monomer_idx, bond_type);
   auto bond = this->getBondWithIdx(new_total - 1);
   bond->setProp(LINKAGE, linkage);
-
-  // Copy polymer_id to new atom
-  auto polymer_id = getPolymerId(this->getAtomWithIdx(monomer_idx));
-  auto *monomer_info = new ::RDKit::AtomMonomerInfo();
-  monomer_info->setChainId(polymer_id);
-  this->getAtomWithIdx(atom_idx)->setMonomerInfo(monomer_info);
 }
 
 unsigned int MonomerMol::addBond(unsigned int atomIdx1, unsigned int atomIdx2,
@@ -287,8 +301,12 @@ unsigned int MonomerMol::addBond(unsigned int atomIdx1, unsigned int atomIdx2,
 std::vector<std::string> MonomerMol::getPolymerIds() const {
   std::vector<std::string> polymer_ids;
   for (auto atom : atoms()) {
-    auto id = getPolymerId(atom);
-    // in vector to preseve order of polymers
+    const auto *mi = atom->getMonomerInfo();
+    if (mi == nullptr) {
+      continue;
+    }
+    auto id = mi->getChainId();
+    // in vector to preserve order of polymers
     if (std::find(polymer_ids.begin(), polymer_ids.end(), id) ==
         polymer_ids.end()) {
       polymer_ids.push_back(id);
@@ -319,6 +337,23 @@ size_t MonomerMol::addMonomer(std::string_view name, MonomerType monomer_type) {
   const auto monomer_class = last_monomer->getMonomerInfo()->getMonomerClass();
   return addMonomer(name, residue_number, monomer_class, chain_id,
                     monomer_type);
+}
+
+size_t MonomerMol::addPlainAtom(int atomic_num) {
+  const auto element = PeriodicTable::getTable()->getElementSymbol(atomic_num);
+  const auto smiles_string = "[" + element + "]";
+  const auto monomer_class = "CHEM";
+  const auto chain_id = get_unused_chem_chain_id(*this);
+  const auto residue_number = 1;
+  const auto is_smiles = true;
+  const auto is_monomer = false;
+  auto plain_atom = makeMonomer(smiles_string, chain_id, monomer_class, residue_number, is_smiles, is_monomer);
+  plain_atom->setAtomicNum(atomic_num);
+  return addAtom(plain_atom.release(), /*updateLabel=*/true, /*takeOwnership=*/true);
+}
+
+size_t MonomerMol::addPlainAtom(const std::string &element) {
+  return addPlainAtom(PeriodicTable::getTable()->getAtomicNumber(element));
 }
 
 Chain MonomerMol::getPolymer(std::string_view polymer_id) const {

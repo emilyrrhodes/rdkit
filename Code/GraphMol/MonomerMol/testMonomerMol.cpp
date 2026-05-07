@@ -430,14 +430,8 @@ TEST_CASE("HybridMol") {
   SECTION("createHybridMol") {
     MonomerMol hybrid_mol;
     auto midx1 = hybrid_mol.addMonomer("A", 1, "PEPTIDE", "PEPTIDE1");
-    auto a = std::make_unique<::RDKit::Atom>();
-    bool update_label = true;
-    bool take_ownership = true;
-    auto aidx2 = hybrid_mol.addAtom(a.release(), update_label, take_ownership);
-
-    hybrid_mol.addAtomMonomerConnection(
-        aidx2, midx1, "R0-R1",
-        ::RDKit::Bond::SINGLE);
+    auto aidx1 = hybrid_mol.addPlainAtom("C");
+    hybrid_mol.addAtomMonomerConnection(aidx1, midx1, "R0-R1", ::RDKit::Bond::SINGLE);
 
     CHECK(getMolState(hybrid_mol) == MolState::Hybrid);
     CHECK(hybrid_mol.getNumAtoms() == 2);
@@ -447,13 +441,9 @@ TEST_CASE("HybridMol") {
   SECTION("hybridMolToAtomistic") {
     MonomerMol hybrid_mol;
     auto midx1 = hybrid_mol.addMonomer("A", 1, "PEPTIDE", "PEPTIDE1");
-    auto a = std::make_unique<::RDKit::Atom>();
-    bool update_label = false;
-    bool take_ownership = true;
-    auto aidx2 = hybrid_mol.addAtom(a.release(), update_label, take_ownership);
+    auto aidx1 = hybrid_mol.addPlainAtom("C");
+    hybrid_mol.addAtomMonomerConnection(aidx1, midx1, "R0-R1", ::RDKit::Bond::SINGLE);
 
-    hybrid_mol.addAtomMonomerConnection(aidx2, midx1, "R0-R1",
-                                        ::RDKit::Bond::SINGLE);
     auto atomistic_mol = toAtomistic(hybrid_mol);
     CHECK(getMolState(*atomistic_mol) == MolState::Atomistic);
     CHECK(atomistic_mol->getNumAtoms() == 7);
@@ -463,18 +453,48 @@ TEST_CASE("HybridMol") {
   SECTION("hybridMolToMonomeric") {
     MonomerMol hybrid_mol;
     auto midx1 = hybrid_mol.addMonomer("A", 1, "PEPTIDE", "PEPTIDE1");
-    auto a = std::make_unique<::RDKit::Atom>();
-    bool update_label = false;
-    bool take_ownership = true;
-    auto aidx2 = hybrid_mol.addAtom(a.release(), update_label, take_ownership);
+    auto aidx1 = hybrid_mol.addPlainAtom("C");
+    hybrid_mol.addAtomMonomerConnection(aidx1, midx1, "R0-R1", ::RDKit::Bond::SINGLE);
 
-    hybrid_mol.addAtomMonomerConnection(aidx2, midx1, "R0-R1",
-                                        ::RDKit::Bond::SINGLE);
     auto atomistic_mol = toAtomistic(hybrid_mol);
-    auto monomer_mol = toMonomeric(atomistic_mol);
-    
+    auto monomer_mol = toMonomeric(*atomistic_mol);
     CHECK(getMolState(*monomer_mol) == MolState::Monomeric);
     CHECK(monomer_mol->getNumAtoms() == 2);
     CHECK(monomer_mol->getNumBonds() == 1);
+  }
+
+  SECTION("getMolStateEmpty") {
+    MonomerMol mol;
+    CHECK(getMolState(mol) == MolState::Empty);
+  }
+
+  SECTION("addPlainAtomByAtomicNum") {
+    MonomerMol mol;
+    auto idx = mol.addPlainAtom(6);
+    CHECK(mol.getAtomWithIdx(idx)->getAtomicNum() == 6);
+    CHECK(getMolState(mol) == MolState::Atomistic);
+  }
+
+  SECTION("multiplePlainAtomsGetDistinctChainIds") {
+    MonomerMol mol;
+    mol.addPlainAtom("C");
+    mol.addPlainAtom("N");
+
+    auto chain_ids = mol.getPolymerIds();
+    REQUIRE(chain_ids.size() == 2);
+    CHECK(chain_ids[0] == "CHEM1");
+    CHECK(chain_ids[1] == "CHEM2");
+  }
+
+  SECTION("plainAtomsInDifferentChainsCanBeBonded") {
+    MonomerMol mol;
+    auto c_idx = mol.addPlainAtom("C");
+    auto n_idx = mol.addPlainAtom("N");
+    mol.addBond(c_idx, n_idx, ::RDKit::Bond::SINGLE);
+
+    auto atomistic_mol = toAtomistic(mol);
+    CHECK(getMolState(*atomistic_mol) == MolState::Atomistic);
+    CHECK(atomistic_mol->getNumAtoms() == 2);
+    CHECK(atomistic_mol->getNumBonds() == 1);
   }
 }

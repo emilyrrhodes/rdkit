@@ -121,7 +121,7 @@ std::string getMonomerClass(std::string_view polymer_id) {
 }
 
 bool isMonomericAtom(const RDKit::Atom &atom) {
-  return atom.hasProp(IS_MONOMER) && atom.getProp<bool>(IS_MONOMER);
+  return isMonomer(&atom);
 }
 
 bool isAtomisticAtom(const RDKit::Atom &atom) { return !isMonomericAtom(atom); }
@@ -130,7 +130,8 @@ AttachmentMap addPolymer(RDKit::RWMol &atomistic_mol,
                          const MonomerMol &monomer_mol,
                          const std::string &polymer_id,
                          std::vector<unsigned int> &remove_atoms, char chain_id,
-                         const MonomerLibrary &db) {
+                         const MonomerLibrary &db,
+                         std::unordered_map<unsigned int, unsigned int> &plain_atom_idx_map) {
   // Maps residue number and attachment point number to the atom index in
   // atomistic_mol that should be attached to and the atom index of the rgroup
   // that should later be removed
@@ -138,10 +139,6 @@ AttachmentMap addPolymer(RDKit::RWMol &atomistic_mol,
 
   auto chain = monomer_mol.getPolymer(polymer_id);
   bool sanitize = false;
-
-  // Maps hybrid mol atom index → atomistic mol atom index for non-monomeric
-  // atoms, so bond-forming can use the correct index in atomistic_mol.
-  std::unordered_map<unsigned int, unsigned int> atomistic_idx_map;
 
   // Add the monomers to the atomistic mol
   for (const auto monomer_idx : chain.atoms) {
@@ -151,10 +148,22 @@ AttachmentMap addPolymer(RDKit::RWMol &atomistic_mol,
     if (isAtomisticAtom(*monomer)) {
       auto new_idx = atomistic_mol.getNumAtoms();
       Atom *newAt = monomer->copy();
+      // Replace AtomMonomerInfo with AtomPDBResidueInfo so toMonomeric can
+      // round-trip through this atom
+      const auto *mi = monomer->getMonomerInfo();
+      if (mi) {
+        auto *res_info = new AtomPDBResidueInfo();
+        res_info->setChainId(mi->getChainId());
+        res_info->setResidueNumber(static_cast<int>(mi->getResidueNumber()));
+        res_info->setResidueName(mi->getResidueName());
+        res_info->setMonomerClass(mi->getMonomerClass());
+        res_info->setInsertionCode(" ");
+        newAt->setMonomerInfo(res_info);
+      }
       const bool updateLabel = false;
       const bool takeOwnership = true;
       atomistic_mol.addAtom(newAt, updateLabel, takeOwnership);
-      atomistic_idx_map[monomer_idx] = new_idx;
+      plain_atom_idx_map[monomer_idx] = new_idx;
       continue;
     }
 
@@ -218,58 +227,25 @@ AttachmentMap addPolymer(RDKit::RWMol &atomistic_mol,
   // removed
   for (const auto bond_idx : chain.bonds) {
     auto bond = monomer_mol.getBondWithIdx(bond_idx);
-    auto [from_rgroup, to_rgroup] =
-        getAttchpts(bond->getProp<std::string>(LINKAGE));
-
     auto begin_atom = bond->getBeginAtom();
     auto end_atom = bond->getEndAtom();
 
-    // Use isMonomericAtom to determine if this is a monomer-monomer bond or an
-    // atomistic bond -- if it's
-    bool begin_atom_atomistic = isAtomisticAtom(*begin_atom);
-    bool end_atom_atomistic = isAtomisticAtom(*end_atom);
-
-    if (begin_atom_atomistic && end_atom_atomistic) {
-      atomistic_mol.addBond(begin_atom->getIdx(), end_atom->getIdx(),
-                            ::RDKit::Bond::SINGLE);
-      continue;
-    } else if (begin_atom_atomistic) {
-      auto atomistic_atom = begin_atom;
-      auto monomer_atom = end_atom;
-      auto rgroup = to_rgroup;
-      unsigned int res = getResidueNumber(monomer_atom);
-      if (attachment_point_map.find(std::make_pair(res, rgroup)) ==
-          attachment_point_map.end()) {
-        throw std::runtime_error(
-            "Invalid linkage " + bond->getProp<std::string>(LINKAGE) +
-            " between atom " + std::to_string(atomistic_atom->getIdx()) +
-            " and monomer " + std::to_string(res));
-      }
-      auto [core_aid, attachment_point] =
-          attachment_point_map.at(std::make_pair(res, rgroup));
-      atomistic_mol.addBond(atomistic_idx_map.at(atomistic_atom->getIdx()),
-                            core_aid, ::RDKit::Bond::SINGLE);
-      remove_atoms.push_back(attachment_point);
-      continue;
-    } else if (end_atom_atomistic) {
-      auto atomistic_atom = end_atom;
-      auto monomer_atom = begin_atom;
-      auto rgroup = from_rgroup;
-      unsigned int res = getResidueNumber(monomer_atom);
-      if (attachment_point_map.find(std::make_pair(res, rgroup)) ==
-          attachment_point_map.end()) {
-        throw std::runtime_error(
-            "Invalid linkage " + bond->getProp<std::string>(LINKAGE) +
-            " between atom " + std::to_string(atomistic_atom->getIdx()) +
-            " and monomer " + std::to_string(res));
-      }
-      auto [core_aid, attachment_point] =
-          attachment_point_map.at(std::make_pair(res, rgroup));
-      atomistic_mol.addBond(atomistic_idx_map.at(atomistic_atom->getIdx()),
-                            core_aid, ::RDKit::Bond::SINGLE);
-      remove_atoms.push_back(attachment_point);
+    if (isAtomisticAtom(*begin_atom) && isAtomisticAtom(*end_atom)) {
+      // Both plain atoms share a chain; add the bond directly.
+      atomistic_mol.addBond(plain_atom_idx_map.at(begin_atom->getIdx()),
+                            plain_atom_idx_map.at(end_atom->getIdx()),
+                            bond->getBondType());
       continue;
     }
+
+    if (isAtomisticAtom(*begin_atom) || isAtomisticAtom(*end_atom)) {
+      throw std::runtime_error(
+          "Mixed plain-atom/monomer bond within the same chain is not "
+          "supported. Use addAtomMonomerConnection for cross-chain bonds.");
+    }
+
+    auto [from_rgroup, to_rgroup] =
+        getAttchpts(bond->getProp<std::string>(LINKAGE));
 
     unsigned int from_res = getResidueNumber(begin_atom);
     unsigned int to_res = getResidueNumber(end_atom);
@@ -311,10 +287,12 @@ std::unique_ptr<RDKit::RWMol> toAtomistic(const MonomerMol &monomer_mol) {
   std::unordered_map<std::string, AttachmentMap> polymer_attachment_points;
   std::vector<unsigned int> remove_atoms;
   char chain_id = 'A';
+  std::unordered_map<unsigned int, unsigned int> plain_atom_idx_map;
 
   for (const auto &polymer_id : monomer_mol.getPolymerIds()) {
     polymer_attachment_points[polymer_id] = addPolymer(
-        *atomistic_mol, monomer_mol, polymer_id, remove_atoms, chain_id, db);
+        *atomistic_mol, monomer_mol, polymer_id, remove_atoms, chain_id, db,
+        plain_atom_idx_map);
     ++chain_id;
   }
 
@@ -323,8 +301,36 @@ std::unique_ptr<RDKit::RWMol> toAtomistic(const MonomerMol &monomer_mol) {
     auto begin_atom = bnd->getBeginAtom();
     auto end_atom = bnd->getEndAtom();
 
+    if (isAtomisticAtom(*begin_atom) && isAtomisticAtom(*end_atom)) {
+      // Both endpoints are plain atoms from different CHEM chains.
+      atomistic_mol->addBond(plain_atom_idx_map.at(begin_atom->getIdx()),
+                             plain_atom_idx_map.at(end_atom->getIdx()),
+                             bnd->getBondType());
+      continue;
+    }
+
     if (isAtomisticAtom(*begin_atom) || isAtomisticAtom(*end_atom)) {
-      // Add atomsitic between polymers bonds eventually
+      const bool atomistic_is_begin = isAtomisticAtom(*begin_atom);
+      const auto *atomistic_atom = atomistic_is_begin ? begin_atom : end_atom;
+      const auto *monomer_atom = atomistic_is_begin ? end_atom : begin_atom;
+      auto [from_rgroup, to_rgroup] =
+          getAttchpts(bnd->getProp<std::string>(LINKAGE));
+      auto rgroup = atomistic_is_begin ? to_rgroup : from_rgroup;
+      unsigned int res = getResidueNumber(monomer_atom);
+      const auto &attachment_points =
+          polymer_attachment_points.at(getPolymerId(monomer_atom));
+      if (attachment_points.find(std::make_pair(res, rgroup)) ==
+          attachment_points.end()) {
+        throw std::runtime_error(
+            "Invalid linkage " + bnd->getProp<std::string>(LINKAGE) +
+            " between atom " + std::to_string(atomistic_atom->getIdx()) +
+            " and monomer " + std::to_string(res));
+      }
+      auto [core_aid, attachment_point] =
+          attachment_points.at(std::make_pair(res, rgroup));
+      atomistic_mol->addBond(plain_atom_idx_map.at(atomistic_atom->getIdx()),
+                             core_aid, bnd->getBondType());
+      remove_atoms.push_back(attachment_point);
       continue;
     }
 

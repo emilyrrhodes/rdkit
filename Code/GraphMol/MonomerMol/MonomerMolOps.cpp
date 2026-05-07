@@ -17,6 +17,12 @@ namespace RDKit {
 
 
 bool isMonomer(const Atom* atom) {
+    bool is_monomer;
+    if (atom->getPropIfPresent(IS_MONOMER, is_monomer)) {
+        return is_monomer;
+    }
+    // Backward compat: mols serialized before IS_MONOMER was added use
+    // SMILES_MONOMER to identify monomer atoms.
     return atom->hasProp(SMILES_MONOMER);
 }
 
@@ -40,7 +46,7 @@ MolState getMolState(const ROMol& mol) {
     bool has_monomer = false;
     bool has_atomistic = false;
     for (const auto atom : mol.atoms()) {
-        if (atom->hasProp(IS_MONOMER) && atom->getProp<bool>(IS_MONOMER)) {
+        if (isMonomer(atom)) {
             has_monomer = true;
         } else {
             has_atomistic = true;
