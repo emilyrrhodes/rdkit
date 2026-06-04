@@ -174,6 +174,9 @@ rdkit_test(test-valgrind test-valgrind.cpp LINK_LIBRARIES SmilesParse FileParser
 rdkit_catch_test(graphmolTestsCatch catch_graphmol.cpp
         LINK_LIBRARIES SubstructMatch FileParsers SmilesParse GraphMol)
 
+rdkit_catch_test(graphmolMACROMolCatch catch_macromol.cpp
+        LINK_LIBRARIES FileParsers SmilesParse GraphMol)
+
 rdkit_catch_test(graphmolOrganometallicsCatch catch_organometallics.cpp
         LINK_LIBRARIES FileParsers SmilesParse GraphMol)
 

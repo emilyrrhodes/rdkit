@@ -220,7 +220,9 @@ class RDKIT_GRAPHMOL_EXPORT MACROMol : public RWMol {
 
   unsigned int getNumExternalTemplateLibs() const { return d_externalTemplateLibs.size();}
 
-  unsigned int addMacroAtom(std::string className, std::string templateName);
+  unsigned int addMacroAtom(std::string className, std::string templateName,
+                            std::string chainId = "",
+                            int residueNumber = -1);
 
   void addMacroBond(unsigned int fromAtomIdx, unsigned int toAtomIdx,
                     Bond::BondType bondType, std::string fromConnectionPoint,

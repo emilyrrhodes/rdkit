@@ -3,9 +3,9 @@
 #include "FileParsers/FileParsers.h"
 #include "FileParsers/FileParserUtils.h"
 
-
 #include "MACROMol.h"
 #include "Atom.h"
+#include "MonomerInfo.h"
 
 namespace RDKit {
 
@@ -102,12 +102,24 @@ MACROMolTemplate::MACROMolTemplate(std::unique_ptr<RWMol> &mol,
 
 
 unsigned int RDKit::MACROMol::addMacroAtom(std::string className,
-                                           std::string templateName) {
+                                           std::string templateName,
+                                           std::string chainId,
+                                           int residueNumber) {
   auto atom = new Atom(0);
   atom->setAtomicNum(0);
 
   atom->setProp(common_properties::dummyLabel, templateName);
   atom->setProp(common_properties::molAtomClass, className);
+  if (!chainId.empty()) {
+    auto* info = new AtomMonomerInfo();
+    info->setResidueName(templateName);
+    info->setMonomerClass(className);
+    info->setChainId(chainId);
+    if (residueNumber >= 0) {
+      info->setResidueNumber(residueNumber);
+    }
+    atom->setMonomerInfo(info);
+  }
   d_atomIdxToTemplatePtrIsStale = true;
   return this->addAtom(atom, false, true);
 }
