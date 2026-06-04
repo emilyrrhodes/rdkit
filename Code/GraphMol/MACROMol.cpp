@@ -5,6 +5,7 @@
 
 #include "MACROMol.h"
 #include "Atom.h"
+#include "MonomerInfo.h"
 
 namespace RDKit {
 
@@ -106,54 +107,21 @@ unsigned int RDKit::MACROMol::addMacroAtom(std::string className,
                                            int residueNumber) {
   auto atom = new Atom(0);
   atom->setAtomicNum(0);
+
   atom->setProp(common_properties::dummyLabel, templateName);
   atom->setProp(common_properties::molAtomClass, className);
   if (!chainId.empty()) {
-    atom->setProp("_origChainId", chainId);
-    atom->setProp("chainId", chainId);
-  }
-  if (residueNumber >= 0) {
-    atom->setProp("_origResidueNumber", residueNumber);
-    atom->setProp("residueNumber", residueNumber);
+    auto* info = new AtomMonomerInfo();
+    info->setResidueName(templateName);
+    info->setMonomerClass(className);
+    info->setChainId(chainId);
+    if (residueNumber >= 0) {
+      info->setResidueNumber(residueNumber);
+    }
+    atom->setMonomerInfo(info);
   }
   d_atomIdxToTemplatePtrIsStale = true;
   return this->addAtom(atom, false, true);
-}
-
-std::optional<std::string> RDKit::MACROMol::getOriginalChainId(unsigned int atomIdx) const {
-  std::string val;
-  if (getAtomWithIdx(atomIdx)->getPropIfPresent("_origChainId", val)) {
-    return val;
-  }
-  return std::nullopt;
-}
-
-std::optional<int> RDKit::MACROMol::getOriginalResidueNumber(unsigned int atomIdx) const {
-  int val;
-  if (getAtomWithIdx(atomIdx)->getPropIfPresent("_origResidueNumber", val)) {
-    return val;
-  }
-  return std::nullopt;
-}
-
-std::string RDKit::MACROMol::getCurrentChainId(unsigned int atomIdx) const {
-  std::string val;
-  getAtomWithIdx(atomIdx)->getPropIfPresent("chainId", val);
-  return val;
-}
-
-int RDKit::MACROMol::getCurrentResidueNumber(unsigned int atomIdx) const {
-  int val = -1;
-  getAtomWithIdx(atomIdx)->getPropIfPresent("residueNumber", val);
-  return val;
-}
-
-void RDKit::MACROMol::setCurrentChainId(unsigned int atomIdx, const std::string &chainId) {
-  getAtomWithIdx(atomIdx)->setProp("chainId", chainId);
-}
-
-void RDKit::MACROMol::setCurrentResidueNumber(unsigned int atomIdx, int residueNumber) {
-  getAtomWithIdx(atomIdx)->setProp("residueNumber", residueNumber);
 }
 
 void RDKit::MACROMol::addMacroBond(unsigned int fromAtomIdx,
