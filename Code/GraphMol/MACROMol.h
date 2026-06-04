@@ -16,6 +16,7 @@
 #include "FileParsers/FileParsers.h"
 #include "FileParsers/FileParserUtils.h"
 #include <mutex>
+#include <optional>
 #include <unordered_map>
 
 
@@ -223,6 +224,16 @@ class RDKIT_GRAPHMOL_EXPORT MACROMol : public RWMol {
   unsigned int addMacroAtom(std::string className, std::string templateName,
                             std::string chainId = "",
                             int residueNumber = -1);
+
+  // Original (user-provided) numbering — frozen after addMacroAtom, no public setter
+  std::optional<std::string> getOriginalChainId(unsigned int atomIdx) const;
+  std::optional<int>         getOriginalResidueNumber(unsigned int atomIdx) const;
+
+  // Current numbering — starts equal to original, updated by assignChains()
+  std::string getCurrentChainId(unsigned int atomIdx) const;
+  int         getCurrentResidueNumber(unsigned int atomIdx) const;
+  void setCurrentChainId(unsigned int atomIdx, const std::string &chainId);
+  void setCurrentResidueNumber(unsigned int atomIdx, int residueNumber);
 
   void addMacroBond(unsigned int fromAtomIdx, unsigned int toAtomIdx,
                     Bond::BondType bondType, std::string fromConnectionPoint,
