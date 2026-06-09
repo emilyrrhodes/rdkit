@@ -64,13 +64,30 @@ RDKIT_FILEPARSERS_EXPORT void MACROMolToSCSRMolFile(
     RDKit::MACROMol &macroMol, const std::string &fName,
     const RDKit::MolWriterParams &params, int confId);
 
+//! Build a MACROMol from an atomistic mol using the supplied template library.
+/*!
+    \warning The resulting MACROMol does NOT copy \c templates into its own local
+    library; instead it retains a reference to \c templates as an external
+    template library (see MACROMol::addTemplateLibrary).  Therefore \c templates
+    MUST outlive the returned MACROMol.  The intended caller passes the
+    process-lifetime singleton from getGlobalMonomerTemplateLib(); callers that
+    pass a stack/temporary library are responsible for keeping it alive for as
+    long as the MACROMol is used.
+*/
 RDKIT_FILEPARSERS_EXPORT std::unique_ptr<RDKit::MACROMol> MolToMACROMol(
     const ROMol &mol, RDKit::MACROMolTemplateLib &templates,
     MolToMACROParams molToMACROMolParams = MolToMACROParams());
-    
+
+//! \overload
+/*!
+    \warning Same lifetime contract as the overload above: \c templates is
+    referenced (not copied) by \c res and must outlive it.
+*/
 RDKIT_FILEPARSERS_EXPORT void MolToMACROMol(MACROMol *res,
     const ROMol &mol, RDKit::MACROMolTemplateLib &templates,
     MolToMACROParams molToMACROMolParams = MolToMACROParams());
+
+RDKIT_FILEPARSERS_EXPORT void ensureLocalTemplatesForScsr(MACROMol &macroMol);
 
 }  // namespace RDKit
 

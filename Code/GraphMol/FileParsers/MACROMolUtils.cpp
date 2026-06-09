@@ -9,6 +9,11 @@
 //  of the RDKit source tree.
 //
 
+#include <algorithm>
+#include <numeric>
+#include <set>
+#include <vector>
+
 #include <RDGeneral/Invariant.h>
 #include <RDGeneral/RDLog.h>
 #include <GraphMol/ROMol.h>
@@ -809,6 +814,8 @@ void MolToMACROMol(MACROMol *res,
     const ROMol &mol, RDKit::MACROMolTemplateLib &templates,
     MolToMACROParams molToMACROMolParams) {
 
+  res->addTemplateLibrary(&templates);
+
   Conformer *conf = nullptr;
   if (mol.getNumConformers() > 0 && templates.doesLibHaveCoords()) {
     conf = new Conformer();
@@ -820,8 +827,23 @@ void MolToMACROMol(MACROMol *res,
 
   std::map<unsigned int, unsigned int> atomMap;
   std::map<BondConnectionDef, std::string> bondConnectionMap;
-  for (unsigned int templateIndex = 0;
-       templateIndex < templates.getNumTemplates(); ++templateIndex) {
+
+  // Process templates most-specific-first (descending number of atoms in the
+  // template's main SUP Sgroup).  Greedy substructure matching claims atoms via
+  // atomMap, and a smaller template's query (built with its leaving-group atoms
+  // stripped) can be a subgraph of a larger residue.
+  std::vector<unsigned int> templateOrder(templates.getNumTemplates());
+  std::iota(templateOrder.begin(), templateOrder.end(), 0u);
+  std::stable_sort(templateOrder.begin(), templateOrder.end(),
+                   [&templates](unsigned int a, unsigned int b) {
+                     auto sgA = templates.getTemplate(a)->getMainSgroup();
+                     auto sgB = templates.getTemplate(b)->getMainSgroup();
+                     size_t na = sgA ? sgA->getAtoms().size() : 0;
+                     size_t nb = sgB ? sgB->getAtoms().size() : 0;
+                     return na > nb;
+                   });
+
+  for (unsigned int templateIndex : templateOrder) {
     auto templateMol = templates.getTemplate(templateIndex);
     templateMol->updatePropertyCache(false);
     std::vector<std::string> templateNames;
@@ -884,7 +906,6 @@ void MolToMACROMol(MACROMol *res,
       continue;
     }
 
-    bool templateCopied = false;
     for (const auto &match : matchVect) {
       std::vector<unsigned int> atomsInMatch;
 
@@ -894,14 +915,6 @@ void MolToMACROMol(MACROMol *res,
                                supAttachPoints, bondConnectionMap,
                                atomsInMatch)) {
         continue;
-      }
-
-      if (!templateCopied) {
-        // add the template to the MACROMol
-        std::unique_ptr<MACROMolTemplate> tempTemplate(
-            new MACROMolTemplate(*templateMol));
-        res->addTemplate(tempTemplate);
-        templateCopied = true;
       }
 
       auto newAtomIdx = res->getNumAtoms();
@@ -978,6 +991,54 @@ void MolToMACROMol(MACROMol *res,
   }
 
   return;
+}
+
+void ensureLocalTemplatesForScsr(MACROMol &macroMol) {
+  auto localLib = macroMol.getTemplateLibrary();
+
+  // collect the unique templates referenced by the atoms that are not already
+  // in the local lib (resolved through the native fallback, which sees the
+  // local + external/global libs)
+  std::set<const MACROMolTemplate *> seen;
+  std::vector<const MACROMolTemplate *> toCopy;
+
+  for (const auto atom : macroMol.atoms()) {
+    auto templatePtr = macroMol.atomIdxToTemplatePtr(atom->getIdx());
+    if (templatePtr == nullptr) {
+      continue;  // atom is not a templated macro atom; could be hybrid
+    }
+    if (!seen.insert(templatePtr).second) {
+      continue;  // already processed this template
+    }
+
+    // is this template already in the local lib?  Check by (class, name).
+    std::string templateClass;
+    std::vector<std::string> templateNames;
+    templatePtr->getPropIfPresent<std::string>(common_properties::molAtomClass,
+                                               templateClass);
+    templatePtr->getPropIfPresent<std::vector<std::string>>(
+        common_properties::templateNames, templateNames);
+
+    bool alreadyLocal = false;
+    for (const auto &templateName : templateNames) {
+      if (localLib->libContains(templateClass, templateName)) {
+        alreadyLocal = true;
+        break;
+      }
+    }
+    if (alreadyLocal) {
+      continue;
+    }
+
+    toCopy.push_back(templatePtr);
+  }
+
+  // copy each not-yet-local template into the local lib
+  for (const auto templatePtr : toCopy) {
+    std::unique_ptr<MACROMolTemplate> tempTemplate(
+        new MACROMolTemplate(*templatePtr));
+    macroMol.addTemplate(tempTemplate);
+  }
 }
 
 }  // end of namespace RDKit

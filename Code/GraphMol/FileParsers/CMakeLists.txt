@@ -31,6 +31,7 @@ rdkit_library(FileParsers
     Mol2FileParser.cpp MolFileParser.cpp
     SCSRUtils.cpp
     MACROMolUtils.cpp
+    MonomerTemplateLib.cpp
     MolSGroupParsing.cpp MolSGroupWriting.cpp
     MolFileStereochem.cpp MolFileWriter.cpp
     ForwardSDMolSupplier.cpp SDMolSupplier.cpp SDWriter.cpp
@@ -60,6 +61,7 @@ rdkit_headers(CDXMLParser.h
     FileParserUtils.h
     SCSRUtils.h
     MACROMolUtils.h
+    MonomerTemplateLib.h
     MolFileStereochem.h
     FileWriters.h
     MolSupplier.h MolSupplier.v1API.h
@@ -108,6 +110,9 @@ rdkit_catch_test(fileParsersCatchTest file_parsers_catch.cpp
 
 rdkit_catch_test(macromolsCatchTest macromols_catch.cpp
     LINK_LIBRARIES FileParsers)
+
+rdkit_catch_test(macromolsPdbToScsr macromols_pdb_to_scsr_catch.cpp
+    LINK_LIBRARIES FileParsers SmilesParse SubstructMatch GraphMol)
 
 rdkit_catch_test(testPropertyLists testPropertyLists.cpp
     LINK_LIBRARIES FileParsers)

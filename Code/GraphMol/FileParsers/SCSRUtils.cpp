@@ -845,9 +845,16 @@ std::unique_ptr<RDKit::RWMol> MolFromSCSRFile(
   return res;
 }
 
-std::string MACROMolToSCSRMolBlock(MACROMol &macroMol,
+std::string MACROMolToSCSRMolBlock(MACROMol &macroMolIn,
                                    const RDKit::MolWriterParams &params,
                                    int confId, bool keepBaseHbondInfo) {
+  // Use a copy of the input macromol so we can modify it for output without
+  // affecting the original.  Note: this deep-copies all atoms, bonds, and the
+  // local template library on every call, which can be costly for large
+  // biomolecules; it is done to keep the caller's MACROMol unmodified.
+  MACROMol macroMol(macroMolIn);
+  ensureLocalTemplatesForScsr(macroMol);
+
   RDKit::Utils::LocaleSwitcher switcher;
   std::string res = "";
   auto localParams = params;

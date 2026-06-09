@@ -326,7 +326,10 @@ class ScsrMolTest {
     CHECK(outMacroMol != nullptr);
     CHECK(outMacroMol->getNumAtoms() == macroMol->getNumAtoms());
     CHECK(outMacroMol->getNumBonds() == macroMol->getNumBonds());
-    CHECK(outMacroMol->getNumTemplates() == macroMol->getNumTemplates());
+    // No local library
+    CHECK(outMacroMol->getNumTemplates() == 0);
+    // Global library only
+    CHECK(outMacroMol->getNumExternalTemplateLibs() == 1);
 
     MACROMolToSCSRMolFile(*(outMacroMol.get()), fOutName2);
 

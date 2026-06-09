@@ -204,6 +204,8 @@ class RDKIT_GRAPHMOL_EXPORT MACROMol : public RWMol {
 
   void addTemplateLibrary(const MACROMolTemplateLib *lib) {
    d_externalTemplateLibs.push_back(lib);
+   // invalidate cache: atoms may now resolve to different templates
+   d_atomIdxToTemplatePtrIsStale = true;
   }
 
 
@@ -211,6 +213,9 @@ class RDKIT_GRAPHMOL_EXPORT MACROMol : public RWMol {
   void addTemplate(std::unique_ptr<MACROMolTemplate> &templateMol) {
     PRECONDITION(templateMol, "bad template molecule");
     d_templateLibrary.addTemplate(templateMol);
+    // invalidate cache: a local template may now override an external one,
+    // so atoms must re-resolve to the correct template pointer
+    d_atomIdxToTemplatePtrIsStale = true;
   }
 
   unsigned int getNumTemplates() const { return d_templateLibrary.getNumTemplates(); }
