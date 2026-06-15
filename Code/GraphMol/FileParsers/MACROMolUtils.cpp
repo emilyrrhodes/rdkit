@@ -19,11 +19,13 @@
 #include <GraphMol/MolPickler.h>
 #include <GraphMol/Conformer.h>
 #include <GraphMol/SubstanceGroup.h>
+#include <GraphMol/FileParsers/Conversions.h>
 #include <GraphMol/FileParsers/MACROMolUtils.h>
 #include <GraphMol/FileParsers/FileParsers.h>
 #include <GraphMol/FileParsers/FileParserUtils.h>
 #include <GraphMol/MACROMol.h>
 #include <GraphMol/FileParsers/MACROMolUtils.h>
+#include <GraphMol/MonomerInfo.h>
 
 #include "MolSGroupParsing.h"
 #include <RDGeneral/StreamOps.h>
@@ -796,6 +798,10 @@ bool isTemplateMatchAHit(
 std::unique_ptr<RDKit::MACROMol> MolToMACROMol(
     const ROMol &mol, const RDKit::MACROMolTemplateLib &templates,
     MolToMACROParams molToMACROMolParams) {
+  if (hasPdbResidueInfo(mol)) {
+    return toMonomeric(mol);
+  }
+
   auto res = std::unique_ptr<MACROMol>(new MACROMol());
 
   MolToMACROMol(res.get(),mol,templates, molToMACROMolParams);

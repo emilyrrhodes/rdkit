@@ -123,7 +123,7 @@ void RDKit::MACROMol::addMacroBond(unsigned int fromAtomIdx,
                                    Bond::BondType bondType,
                                    std::string fromConnectionPoint,
                                    std::string toConnectionPoint) {
-  auto bondIdx = this->addBond(fromAtomIdx, toAtomIdx, bondType);
+  auto bondIdx = this->addBond(fromAtomIdx, toAtomIdx, bondType) - 1;
   auto bond = this->getBondWithIdx(bondIdx);
   this->setBondBookmark(bond, bondIdx);
 
@@ -151,6 +151,12 @@ const MACROMolTemplate *RDKit::MACROMol::getTemplate(
   }
 
   auto templatePtr = d_templateLibrary.find(atomClass, dummyLabel);
+  if (templatePtr == nullptr && d_globalLib != nullptr) {
+    // fall back to the shared global library: a MACROMol built directly from
+    // atomistic data (e.g. a PDB file via toMonomeric) references templates
+    // that live only in the global library, leaving the local one empty.
+    templatePtr = d_globalLib->find(atomClass, dummyLabel);
+  }
   if (templatePtr == nullptr) {
     std::ostringstream errout;
     errout << "Template not found for atom " << dummyLabel;

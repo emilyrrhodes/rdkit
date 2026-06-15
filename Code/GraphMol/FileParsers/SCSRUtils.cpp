@@ -18,6 +18,7 @@
 
 #include <RDGeneral/FileParseException.h>
 #include <RDGeneral/BadFileException.h>
+#include <set>
 #include <GraphMol/FileParsers/SCSRUtils.h>
 #include <GraphMol/MACROMol.h>
 #include <GraphMol/FileParsers/MACROMolUtils.h>
@@ -1009,8 +1010,21 @@ std::string MACROMolToSCSRMolBlock(MACROMol &macroMol,
 
   res += "M  V30 BEGIN TEMPLATE\n";
   unsigned int templateId = 0;
-  for (const auto &templatePtr : *macroMol.getTemplateLibrary()) {
-    auto macroMolTemplate = templatePtr.get();
+  // Collect the templates actually referenced by the macro atoms. getTemplate()
+  // resolves each atom against the local library, falling back to the shared
+  // global library when the local one is empty (e.g. a MACROMol built from a
+  // PDB file via toMonomeric). A template can be used by many atoms, so dedupe.
+  std::set<const MACROMolTemplate *> writtenTemplates;
+  for (const auto atom : macroMol.atoms()) {
+    if (!atom->hasProp(common_properties::molAtomClass)) {
+      continue;  // ordinary atom, not a macro atom
+    }
+    const MACROMolTemplate *macroMolTemplate =
+        macroMol.getTemplate(atom->getIdx());
+    if (macroMolTemplate == nullptr ||
+        !writtenTemplates.insert(macroMolTemplate).second) {
+      continue;  // already written this template
+    }
     std::string templateClass;
     std::vector<std::string> templateNames;
     std::string natReplace = "";

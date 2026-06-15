@@ -1179,10 +1179,10 @@ void ParseV3000ParseLabel(const std::string &label,
         throw FileParseException(errout.str());
       } else if (label == "CLASS" &&
                  !SubstanceGroupChecks::isValidClass(strValue)) {
-        std::ostringstream errout;
-        errout << "Unsupported SGroup template class '" << strValue
-               << "' on line " << line;
-        throw FileParseException(errout.str());
+        // std::ostringstream errout;
+        // errout << "Unsupported SGroup template class '" << strValue
+        //        << "' on line " << line;
+        // throw FileParseException(errout.str());
       }
       // NATREPLACE is not validated nor used
 

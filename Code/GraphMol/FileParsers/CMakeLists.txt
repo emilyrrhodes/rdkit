@@ -29,6 +29,8 @@ endif()
 rdkit_library(FileParsers
     CDXMLParser.cpp
     Mol2FileParser.cpp MolFileParser.cpp
+    toMonomeric.cpp
+    MonomerMolOps.cpp toAtomistic.cpp MonomerLibrary.cpp
     SCSRUtils.cpp
     MACROMolUtils.cpp
     MolSGroupParsing.cpp MolSGroupWriting.cpp
@@ -59,6 +61,8 @@ rdkit_headers(CDXMLParser.h
     FileParsers.h
     FileParserUtils.h
     SCSRUtils.h
+    MonomerLibrary.h
+    Conversions.h
     MACROMolUtils.h
     MolFileStereochem.h
     FileWriters.h
@@ -109,6 +113,9 @@ rdkit_catch_test(fileParsersCatchTest file_parsers_catch.cpp
 rdkit_catch_test(macromolsCatchTest macromols_catch.cpp
     LINK_LIBRARIES FileParsers)
 
+rdkit_catch_test(testPDB testPDB.cpp
+    LINK_LIBRARIES FileParsers)
+
 rdkit_catch_test(testPropertyLists testPropertyLists.cpp
     LINK_LIBRARIES FileParsers)
 
@@ -132,6 +139,12 @@ rdkit_catch_test(v2FileParsersCatchTest v2_file_parsers_catch.cpp
 
 rdkit_catch_test(atropisomersCatch atropisomers_catch.cpp
     LINK_LIBRARIES FileParsers)
+
+# rdkit_catch_test(testMonomerMol testMonomerMol.cpp
+#     LINK_LIBRARIES FileParsers SubstructMatch GraphMol)
+
+# rdkit_catch_test(testMonomerLibrary testMonomerLibrary.cpp
+#     LINK_LIBRARIES FileParsers SmilesParse GraphMol)
 
 find_package(TBB )
 if(TBB_FOUND)
