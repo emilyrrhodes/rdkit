@@ -40,12 +40,11 @@ if(RDK_BUILD_MAEPARSER_SUPPORT OR RDK_BUILD_COORDGEN_SUPPORT)
     install(TARGETS maeparser DESTINATION ${RDKit_LibDir})
     set(maeparser_LIBRARIES maeparser)
 
+    target_include_directories(maeparser PUBLIC
+     $<BUILD_INTERFACE:${maeparser_INCLUDE_DIRS}>
+     $<INSTALL_INTERFACE:include>)
 
   endif(MAEPARSER_FORCE_BUILD OR (NOT maeparser_FOUND))
-  # FIX: the INSTALL_INTERFACE here is not correct
-  target_include_directories(maeparser PUBLIC 
-   $<BUILD_INTERFACE:${maeparser_INCLUDE_DIRS}>
-   $<INSTALL_INTERFACE:include>)
 
   set(RDK_MAEPARSER_LIBS ${maeparser_LIBRARIES}
       CACHE STRING "the external libraries" FORCE)

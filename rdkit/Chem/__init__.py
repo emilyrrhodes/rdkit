@@ -17,7 +17,10 @@ from rdkit.Chem import rdchem
 from rdkit.Geometry import rdGeometry
 
 _HasSubstructMatchStr = rdchem._HasSubstructMatchStr
-from rdkit.Chem.inchi import *
+try:
+  from rdkit.Chem.inchi import *
+except ImportError:
+  pass
 from rdkit.Chem.rdchem import *
 try:
   from rdkit.Chem.rdCIPLabeler import *
