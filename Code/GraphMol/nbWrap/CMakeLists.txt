@@ -77,6 +77,9 @@ endif(RDK_BUILD_COMPRESSED_SUPPLIERS)
 #
 add_pytest(pyGraphMolWrap
          ${CMAKE_CURRENT_SOURCE_DIR}/rough_test.py)
+
+add_pytest(pyTestWrappingProfiling
+         ${CMAKE_CURRENT_SOURCE_DIR}/../Wrap/testWrappingProfiling.py)
 #
 #add_pytest(pyTestConformerWrap
 #         ${CMAKE_CURRENT_SOURCE_DIR}/testConformer.py)

@@ -64,6 +64,9 @@ add_pytest(pyGraphMolWrap
 add_pytest(pyTestGetPropDefault
          ${CMAKE_CURRENT_SOURCE_DIR}/testGetPropDefault.py)
 
+add_pytest(pyTestWrappingProfiling
+         ${CMAKE_CURRENT_SOURCE_DIR}/testWrappingProfiling.py)
+
 add_pytest(pyTestConformerWrap
          ${CMAKE_CURRENT_SOURCE_DIR}/testConformer.py)
 
