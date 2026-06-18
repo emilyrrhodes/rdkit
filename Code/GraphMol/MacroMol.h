@@ -13,6 +13,8 @@
 
 #include "MacroMolTemplate.h"
 
+#include <optional>
+
 namespace RDKit {
 
 class RDKIT_GRAPHMOL_EXPORT MacroMol : public RWMol {
@@ -20,6 +22,8 @@ class RDKIT_GRAPHMOL_EXPORT MacroMol : public RWMol {
   friend class SCSRUtils;
   // elements (MacroMolTemplate items) of the library are owned by the library
   MacroMolTemplateLib d_templateLibrary;
+  // pointer to the global library if loaded (Owned globally)
+  const MacroMolTemplateLib *d_globalLib = nullptr;
 
  protected:
   // the following are used in SCSR parsing, where the templates are still being
@@ -28,8 +32,10 @@ class RDKIT_GRAPHMOL_EXPORT MacroMol : public RWMol {
 
  public:
   MacroMol() = default;
+  explicit MacroMol(bool useGlobalLibrary);
   MacroMol(const MacroMol &other) : RWMol((RWMol)other) {
     d_templateLibrary.copyTemplateLib(*other.getTemplateLibrary());
+    d_globalLib = other.d_globalLib;  // share the same global; do not clone
   }
   MacroMol(MacroMol &&other) noexcept = delete;
   MacroMol &operator=(MacroMol &&other) noexcept = delete;
@@ -56,7 +62,10 @@ class RDKIT_GRAPHMOL_EXPORT MacroMol : public RWMol {
 
   unsigned int size() const { return d_templateLibrary.size(); }
 
-  unsigned int addMacroAtom(std::string className, std::string templateName);
+  unsigned int addMacroAtom(
+      std::string className, std::string templateName,
+      std::optional<unsigned int> residueNumber = std::nullopt,
+      std::optional<std::string> chainId = std::nullopt);
 
   void addMacroBond(unsigned int fromAtomIdx, unsigned int toAtomIdx,
                     Bond::BondType bondType, std::string fromConnectionPoint,

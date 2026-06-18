@@ -9,8 +9,11 @@
 //
 
 #include <RDGeneral/RDLog.h>
+#include <GraphMol/Conversions.h>
+#include <GraphMol/FileParsers/FileParsers.h>
+#include <GraphMol/MacroMol.h>
 #include <GraphMol/RDKitBase.h>
-#include <GraphMol/FileParsers/MacroMolUtils.h>
+#include <GraphMol/SmilesParse/SmilesParse.h>
 #include <GraphMol/SmilesParse/SmilesWrite.h>
 #include <GraphMol/GeneralizedSubstruct/XQMol.h>
 #include <catch2/catch_all.hpp>
@@ -40,7 +43,6 @@ TEST_CASE("testBuildMacroMol") {
   CHECK(sequence == "ACD");
 }
 
-/*
 TEST_CASE("testSubstructureSearchWithMacroMols") {
   // Load in a PDB file as a MacroMol, build a simple MacroMol that is a subset
   // of the first MacroMol, and check that a substructure search finds the
@@ -48,16 +50,34 @@ TEST_CASE("testSubstructureSearchWithMacroMols") {
   std::string rdbase = getenv("RDBASE");
   std::string fname = rdbase + "/Code/GraphMol/FileParsers/test_data/1DNG.pdb";
   std::unique_ptr<RWMol> mol(PDBFileToMol(fname));
-  std::unique_ptr<RDKit::MacroMol> pdb_macro_mol = RDKit::toMonomeric(mol);
+  std::unique_ptr<RDKit::MacroMol> pdb_macro_mol =
+      RDKit::MolToMacroMol(*mol, MacroMolTemplateLib::getGlobalLibrary());
+
+  for (const auto &atom : pdb_macro_mol->atoms()) {
+    if (!atom->hasProp(common_properties::dummyLabel) ||
+        !atom->hasProp(common_properties::molAtomClass)) {
+      std::cerr << "Atom " << atom->getIdx()
+                << " is missing required properties for MacroMol: "
+                << common_properties::dummyLabel << " or "
+                << common_properties::molAtomClass << std::endl;
+      continue;
+    }
+    std::string templateName =
+        atom->getProp<std::string>(common_properties::dummyLabel);
+    std::string className =
+        atom->getProp<std::string>(common_properties::molAtomClass);
+    std::cerr << "Atom " << atom->getIdx() << " template name: " << templateName
+              << " class name: " << className << std::endl;
+  }
 
   auto simple_macro_mol = std::make_unique<MacroMol>();
-  auto macro_atom_1 = simple_macro_mol->addMacroAtom("PEPTIDE", "A");
-  auto macro_atom_2 = simple_macro_mol->addMacroAtom("PEPTIDE", "Y");
-  auto macro_atom_3 = simple_macro_mol->addMacroAtom("PEPTIDE", "E");
+  auto macro_atom_1 = simple_macro_mol->addMacroAtom("AA", "A");
+  auto macro_atom_2 = simple_macro_mol->addMacroAtom("AA", "Y");
+  auto macro_atom_3 = simple_macro_mol->addMacroAtom("AA", "E");
   simple_macro_mol->addMacroBond(macro_atom_1, macro_atom_2,
-                                 Bond::BondType::SINGLE, "R2", "R1");
+                                 Bond::BondType::SINGLE, "2", "1");
   simple_macro_mol->addMacroBond(macro_atom_2, macro_atom_3,
-                                 Bond::BondType::SINGLE, "R2", "R1");
+                                 Bond::BondType::SINGLE, "2", "1");
 
   RDKit::GeneralizedSubstruct::ExtendedQueryMol query(
       std::make_unique<RWMol>(*simple_macro_mol));
@@ -65,7 +85,6 @@ TEST_CASE("testSubstructureSearchWithMacroMols") {
       RDKit::GeneralizedSubstruct::hasSubstructMatch(*pdb_macro_mol, query);
   CHECK(match);
 }
-*/
 
 TEST_CASE("testUniversalAttachmentPointConventions") {
   // Build two MacroMols with the same template atoms and bonds, but different
@@ -122,7 +141,6 @@ TEST_CASE("testUniversalAttachmentPointConventions") {
                    // location should be considered a change chemical structure
 }
 
-/*
 TEST_CASE("testMacroMolToAtomisticMol") {
   // Build a simple MacroMol with three macro atoms and two bonds, convert it to
   // an atomistic mol, and check that the resulting atomistic mol has the
@@ -136,13 +154,24 @@ TEST_CASE("testMacroMolToAtomisticMol") {
   macro_mol->addMacroBond(macro_atom_2, macro_atom_3, Bond::BondType::SINGLE,
                           "2", "1");
 
-  auto atomistic_mol = RDKit::toAtomistic(macro_mol);
-  CHECK(atomistic_mol->getNumAtoms() == 37);
-  CHECK(atomistic_mol->getNumBonds() == 40);
+  // outputSgroups=false so the leaving-group hydrogens at unused attachment
+  // points (the N-terminal amine H and the cysteine thiol H) are collapsed to
+  // implicit Hs by default H removal rather than being protected by the
+  // per-residue superatom sgroups.
+  MolFromMacroMolParams molFromMacroMolParams;
+  molFromMacroMolParams.outputSgroups = false;
+  auto atomistic_mol = RDKit::MolFromMacroMol(
+      macro_mol.get(), RDKit::v2::FileParsers::MolFileParserParams(),
+      molFromMacroMolParams);
+  CHECK(atomistic_mol->getNumAtoms() == 20);
+  CHECK(atomistic_mol->getNumBonds() == 19);
   auto smiles = RDKit::MolToSmiles(*atomistic_mol);
-  CHECK(smiles == "N[C@@H](C)C(=O)N[C@@H](CS)C(=O)N[C@@H](CC(=O)O)C(=O)O");
+  // compare canonical-to-canonical so the check is independent of the input
+  // SMILES atom ordering
+  std::unique_ptr<ROMol> expected(RDKit::SmilesToMol(
+      "N[C@@H](C)C(=O)N[C@@H](CS)C(=O)N[C@@H](CC(=O)O)C(=O)O"));
+  CHECK(smiles == RDKit::MolToSmiles(*expected));
 }
-*/
 
 TEST_CASE("testMacroMolCanonicalize") {
   // Build two MacroMols with the same template atoms and bonds, but different

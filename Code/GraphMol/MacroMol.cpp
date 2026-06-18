@@ -14,16 +14,39 @@
 
 #include "MacroMol.h"
 #include "Atom.h"
+#include "MonomerInfo.h"
+
+#include <optional>
 
 namespace RDKit {
 
-unsigned int RDKit::MacroMol::addMacroAtom(std::string className,
-                                           std::string templateName) {
+MacroMol::MacroMol(bool useGlobalLibrary) {
+  if (useGlobalLibrary) {
+    d_globalLib = &MacroMolTemplateLib::getGlobalLibrary();
+  }
+}
+
+unsigned int RDKit::MacroMol::addMacroAtom(
+    std::string className, std::string templateName,
+    std::optional<unsigned int> residueNumber,
+    std::optional<std::string> chainId) {
   auto atom = new Atom(0);
   atom->setAtomicNum(0);
 
   atom->setProp(common_properties::dummyLabel, templateName);
   atom->setProp(common_properties::molAtomClass, className);
+
+  auto *monomer_info = new ::RDKit::AtomMonomerInfo();
+  monomer_info->setResidueName(templateName);
+  monomer_info->setMonomerClass(className);
+  if (residueNumber) {
+    monomer_info->setResidueNumber(*residueNumber);
+  }
+  if (chainId) {
+    monomer_info->setChainId(*chainId);
+  }
+  atom->setMonomerInfo(monomer_info);
+
   return this->addAtom(atom, false, true);
 }
 
@@ -81,6 +104,11 @@ const MacroMolTemplate *RDKit::MacroMol::getTemplate(
   }
 
   auto templatePtr = d_templateLibrary.find(atomClass, dummyLabel);
+  if (templatePtr == nullptr) {
+    const MacroMolTemplateLib *globalLib =
+        d_globalLib ? d_globalLib : &MacroMolTemplateLib::getGlobalLibrary();
+    templatePtr = globalLib->find(atomClass, dummyLabel);
+  }
   if (templatePtr == nullptr) {
     std::ostringstream errout;
     errout << "Template not found for atom " << dummyLabel;

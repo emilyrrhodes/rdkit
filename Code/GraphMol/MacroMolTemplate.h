@@ -15,6 +15,7 @@
 #include <RDGeneral/BadFileException.h>
 #include "FileParsers/FileParsers.h"
 #include "FileParsers/FileParserUtils.h"
+#include <functional>
 #include <mutex>
 #include <unordered_map>
 
@@ -93,6 +94,14 @@ class RDKIT_GRAPHMOL_EXPORT MacroMolTemplateLib {
   MacroMolTemplateLib &operator=(MacroMolTemplateLib &&other) noexcept = delete;
   MacroMolTemplateLib &operator=(const MacroMolTemplateLib &) = delete;
   ~MacroMolTemplateLib() {}
+
+  static const MacroMolTemplateLib &getGlobalLibrary();
+
+  //! Register a loader used to populate the global library the first time it is
+  //! accessed.  GraphMol cannot build templates itself (that needs the
+  //! SmilesParse layer), so a higher layer (FileParsers) registers a loader.
+  static void setGlobalLibraryLoader(
+      std::function<void(MacroMolTemplateLib &)> loader);
 
   std::vector<std::unique_ptr<MacroMolTemplate>>::const_iterator begin() const {
     return d_templates.begin();

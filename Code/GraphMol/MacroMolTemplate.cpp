@@ -17,6 +17,34 @@
 
 namespace RDKit {
 
+namespace {
+// Function-local static to avoid static-init-order issues: the loader may be
+// registered by a file-scope initializer in another translation unit.
+std::function<void(MacroMolTemplateLib &)> &globalLibraryLoaderRef() {
+  static std::function<void(MacroMolTemplateLib &)> loader;
+  return loader;
+}
+}  // anonymous namespace
+
+void MacroMolTemplateLib::setGlobalLibraryLoader(
+    std::function<void(MacroMolTemplateLib &)> loader) {
+  globalLibraryLoaderRef() = std::move(loader);
+}
+
+const MacroMolTemplateLib &MacroMolTemplateLib::getGlobalLibrary() {
+  static std::once_flag initOnce;
+  static std::unique_ptr<MacroMolTemplateLib> globalLibrary;
+
+  std::call_once(initOnce, []() {
+    globalLibrary = std::make_unique<MacroMolTemplateLib>();
+    auto &loader = globalLibraryLoaderRef();
+    if (loader) {
+      loader(*globalLibrary);
+    }
+  });
+  return *globalLibrary;
+}
+
 void RDKit::MacroMolTemplate::findMainSgroupForTemplate(
     std::string className, std::string templateName) const {
   d_mainSgroupIdx = UINT_MAX;

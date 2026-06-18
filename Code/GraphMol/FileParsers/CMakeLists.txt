@@ -30,7 +30,6 @@ rdkit_library(FileParsers
     CDXMLParser.cpp
     Mol2FileParser.cpp MolFileParser.cpp
     SCSRMolFileParser.cpp
-    MacroMolUtils.cpp
     MolSGroupParsing.cpp MolSGroupWriting.cpp
     MolFileStereochem.cpp MolFileWriter.cpp
     ForwardSDMolSupplier.cpp SDMolSupplier.cpp SDWriter.cpp
@@ -41,6 +40,9 @@ rdkit_library(FileParsers
     TplFileParser.cpp TplFileWriter.cpp
     PDBParser.cpp PDBWriter.cpp
     CMLWriter.cpp XYZFileWriter.cpp XYZFileParser.cpp
+    MolToMacroMol.cpp
+    MolFromMacroMol.cpp
+    MonomerTemplates.cpp
     ${maesupplier}
     ProximityBonds.cpp
     SequenceParsers.cpp SequenceWriters.cpp
@@ -58,7 +60,6 @@ target_compile_definitions(FileParsers PRIVATE RDKIT_FILEPARSERS_BUILD)
 rdkit_headers(CDXMLParser.h
     FileParsers.h
     FileParserUtils.h
-    MacroMolUtils.h
     MolFileStereochem.h
     FileWriters.h
     MolSupplier.h MolSupplier.v1API.h
@@ -149,4 +150,3 @@ if(RDK_TEST_MULTITHREADED AND RDK_BUILD_THREADSAFE_SSS)
 rdkit_catch_test(multithreadedSupplierCatchTest multithreaded_supplier_catch.cpp
     LINK_LIBRARIES FileParsers)
 endif()
-

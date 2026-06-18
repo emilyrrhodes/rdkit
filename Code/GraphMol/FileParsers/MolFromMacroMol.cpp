@@ -1,4 +1,3 @@
-
 //
 //  Copyright (C) 2025 Tad Hurst and other RDKit contributors
 //
@@ -9,45 +8,33 @@
 //  of the RDKit source tree.
 //
 
-#include <RDGeneral/Invariant.h>
-#include <RDGeneral/RDLog.h>
-#include <GraphMol/ROMol.h>
+#include <RDGeneral/FileParseException.h>
 #include <GraphMol/Atom.h>
-#include <GraphMol/QueryAtom.h>
 #include <GraphMol/Bond.h>
-#include <GraphMol/QueryBond.h>
-#include <GraphMol/MolPickler.h>
 #include <GraphMol/Conformer.h>
-#include <GraphMol/SubstanceGroup.h>
-#include <GraphMol/FileParsers/MacroMolUtils.h>
-#include <GraphMol/FileParsers/FileParsers.h>
-#include <GraphMol/FileParsers/FileParserUtils.h>
+#include <GraphMol/Conversions.h>
 #include <GraphMol/MacroMol.h>
-#include <GraphMol/FileParsers/MacroMolUtils.h>
+#include <GraphMol/MolOps.h>
+#include <GraphMol/ROMol.h>
+#include <GraphMol/RWMol.h>
+#include <GraphMol/SubstanceGroup.h>
+#include <GraphMol/FileParsers/FileParserUtils.h>
+#include <GraphMol/FileParsers/FileParsers.h>
 
 #include "MolSGroupParsing.h"
-#include <RDGeneral/StreamOps.h>
-#include <GraphMol/SmilesParse/SmilesParse.h>
-#include <GraphMol/Substruct/SubstructMatch.h>
-#include <GraphMol/ChemTransforms/ChemTransforms.h>
-#include <GraphMol/Substruct/SubstructMatch.h>
-#include <GraphMol/RDKitQueries.h>
-#include <GraphMol/SmilesParse/SmilesParse.h>
-#include <GraphMol/SmilesParse/SmilesWrite.h>
 
-#include <RDGeneral/FileParseException.h>
-#include <RDGeneral/BadFileException.h>
-
-#ifdef RDK_USE_BOOST_SERIALIZATION
-#include <RDGeneral/BoostStartInclude.h>
-#include <boost/archive/text_oarchive.hpp>
-#include <boost/archive/text_iarchive.hpp>
-#include <RDGeneral/BoostEndInclude.h>
-#endif
+#include <algorithm>
+#include <climits>
+#include <map>
+#include <memory>
+#include <set>
+#include <string>
+#include <vector>
 
 using namespace RDKit::SGroupParsing;
 
 namespace RDKit {
+namespace {
 
 class MolFromMacroMolConverter {
  private:
@@ -133,14 +120,14 @@ class MolFromMacroMolConverter {
 
     // copy the atoms of the sgroup into the new molecule
 
-    auto templatePtr = macroMol->getTemplate(atomIdx);
-
     if (newConf) {
-      newConf->resize(newConf->getNumAtoms() + templatePtr->getNumAtoms());
+      newConf->resize(newConf->getNumAtoms() +
+                      macroMol->getTemplate(atomIdx)->getNumAtoms());
     }
 
     for (auto templateAtomIdx : sgroup.getAtoms()) {
-      auto templateAtom = templatePtr->getAtomWithIdx(templateAtomIdx);
+      auto templateAtom =
+          macroMol->getTemplate(atomIdx)->getAtomWithIdx(templateAtomIdx);
       auto newAtom = new Atom(*templateAtom);
 
       mol->addAtom(newAtom, true, true);
@@ -152,8 +139,9 @@ class MolFromMacroMolConverter {
       if (newConf) {
         newConf->setAtomPos(
             newAtom->getIdx(),
-            coordOffset +
-                templatePtr->getConformer().getAtomPos(templateAtomIdx));
+            coordOffset + macroMol->getTemplate(atomIdx)
+                              ->getConformer()
+                              .getAtomPos(templateAtomIdx));
       }
     }
   }
@@ -342,16 +330,16 @@ class MolFromMacroMolConverter {
         templateMol->getProp<std::vector<std::string>>(
             common_properties::templateNames, templateNames);
         switch (molFromMacroMolParams.macroTemplateNames) {
-          case MACROTemplateNames::UseFirstName:
+          case MacroMolTemplateNames::UseFirstName:
             templateNameToUse = templateNames[0];
             break;
-          case MACROTemplateNames::UseSecondName:
+          case MacroMolTemplateNames::UseSecondName:
             templateNameToUse = templateNames.back();
             break;
-          case MACROTemplateNames::AsEntered:
+          case MacroMolTemplateNames::AsEntered:
             templateNameToUse = dummyLabel;
             break;
-          case MACROTemplateNames::All:
+          case MacroMolTemplateNames::All:
             templateNameToUse = "";
             for (const auto &nm : templateNames) {
               if (templateNameToUse != "") {
@@ -644,6 +632,16 @@ class MolFromMacroMolConverter {
       mol->setStereoGroups(newStereoGroups);
     }
 
+    // finishMolProcessing reads getConformer() unconditionally.  When the
+    // source MacroMol had no coordinates the result has no conformer, so give
+    // it a default 2D conformer (positions are meaningless, but chirality is
+    // preserved from the template atom tags rather than from coordinates).
+    if (mol->getNumConformers() == 0) {
+      auto *defaultConf = new Conformer(mol->getNumAtoms());
+      defaultConf->set3D(false);
+      mol->addConformer(defaultConf, true);
+    }
+
     bool chiralityPossible = false;
     RDKit::FileParserUtils::finishMolProcessing(mol.get(), chiralityPossible,
                                                 molFileParserParams);
@@ -657,6 +655,8 @@ class MolFromMacroMolConverter {
   }
 };
 
+}  // namespace
+
 std::unique_ptr<RDKit::RWMol> MolFromMacroMol(
     const MacroMol *macroMol,
     const RDKit::v2::FileParsers::MolFileParserParams &molFileParserParams,
@@ -666,313 +666,10 @@ std::unique_ptr<RDKit::RWMol> MolFromMacroMol(
   return converter.convert();
 }
 
-// writer functions
-
-class BondConnectionDef {
- public:
-  BondConnectionDef(unsigned int atomIdx1Init, unsigned int atomIdx2Init)
-      : atomIdx1(atomIdx1Init), atomIdx2(atomIdx2Init) {}
-
-  unsigned int atomIdx1;
-  unsigned int atomIdx2;
-
- public:
-  bool operator<(const BondConnectionDef &other) const {
-    if (atomIdx1 != other.atomIdx1) {
-      return atomIdx1 < other.atomIdx1;
-    }
-    return atomIdx2 < other.atomIdx2;
-  }
-};
-
-bool isTemplateMatchAHit(
-    const MatchVectType &match, const ROMol &mol, const ROMol *templateMol,
-    const RWMol *queryMol, std::map<unsigned int, unsigned int> &atomMap,
-    const std::vector<SubstanceGroup::AttachPoint> &supAttachPoints,
-    std::map<BondConnectionDef, std::string> &bondConnectionMap,
-    std::vector<unsigned int> &atomsInMatch) {
-  // get a new set of match points to be used for the new template ref atoms
-  atomsInMatch.clear();
-  // newAttachOrds.clear();
-  std::map<unsigned int, unsigned int> molToQueryMap;
-
-  // check to see if any of the atoms or bonds are already used
-  for (auto pair : match) {
-    if (atomMap.contains(pair.second)) {
-      // atom already used in another match - skip this match
-      return false;
-    }
-
-    molToQueryMap[pair.second] = pair.first;
-    atomsInMatch.push_back(pair.second);
-  }
-  // for each atom in the match, check its bonds.  If it has a bond to
-  // another atom in the hit,
-  //  make sure that bond is the query.  If not, skip this match.
-
-  // If the atom is an attachment point for the template, see if there is
-  // a bond to an atom NOT in the match. If so, record the attachment
-  // order for later.
-
-  // if the atom is not an attachment point,  it has an external bond skip this
-  // match.
-
-  std::vector<bool> attachPointUsed(supAttachPoints.size(), false);
-  for (auto molToQueryMapItem : molToQueryMap) {
-    auto atom = mol.getAtomWithIdx(molToQueryMapItem.first);
-    auto queryAtom = queryMol->getAtomWithIdx(molToQueryMapItem.second);
-    unsigned int templateAtomIdx =
-        queryAtom->getProp<unsigned int>("origAtomId");
-    for (const auto bond : mol.atomBonds(atom)) {
-      unsigned int nbrAtomIdx = bond->getOtherAtomIdx(atom->getIdx());
-      if (molToQueryMap.contains(nbrAtomIdx)) {
-        // make sure the bond is also in the query mol - if not skip this
-        // match
-
-        auto queryBond = queryMol->getBondBetweenAtoms(
-            molToQueryMap[bond->getBeginAtomIdx()],
-            molToQueryMap[bond->getEndAtomIdx()]);
-
-        if (!queryBond) {
-          return false;
-        }
-
-        // bond to another atom is in the query - ok
-        continue;
-      } else {
-        // bond to an atom NOT in the main SUP - could be a leaving group
-
-        bool sapFound = false;
-        for (unsigned int attachPointIndex = 0;
-             attachPointIndex < supAttachPoints.size(); ++attachPointIndex) {
-          auto attachPoint = supAttachPoints[attachPointIndex];
-          if (attachPointUsed[attachPointIndex]) {
-            continue;
-          }
-
-          if (attachPoint.aIdx == templateAtomIdx) {
-            // see if the attachment point is an H or OH, and the nbr atom is
-            // also an H or OH if so, this leaving group can be considered part
-            // of the template
-
-            sapFound = true;
-            attachPointUsed[attachPointIndex] = true;
-
-            auto nbrAtom = mol.getAtomWithIdx(nbrAtomIdx);
-            const Atom *templateNbrAtom = nullptr;
-            if (attachPoint.lvIdx >= 0) {
-              templateNbrAtom = templateMol->getAtomWithIdx(attachPoint.lvIdx);
-            }
-            // if the template nbr atom is a single atom and so is the matched
-            // atom, and they have the same atomic num and numHs, treat this as
-            // part of the template
-            if (attachPoint.lvIdx >= 0 && nbrAtom->getDegree() == 1 &&
-                templateNbrAtom->getDegree() == 1 &&
-                templateNbrAtom->getAtomicNum() == nbrAtom->getAtomicNum() &&
-                templateNbrAtom->getTotalNumHs() == nbrAtom->getTotalNumHs()) {
-              // ok - treat this as part of the template
-
-              atomsInMatch.push_back(nbrAtomIdx);
-            } else {
-              // save the attach point relative to the full atom molecule being
-              // converted
-
-              bondConnectionMap[BondConnectionDef(atom->getIdx(), nbrAtomIdx)] =
-                  attachPoint.id;
-            }
-            break;
-          }
-        }
-
-        if (!sapFound) {
-          // external bond that is not allowed - skip this match
-          return false;
-        }
-      }
-    }
-  }
-
-  return true;
-}
-
-std::unique_ptr<RDKit::MacroMol> MolToMacroMol(
-    const ROMol &mol, const RDKit::MacroMolTemplateLib &templates,
-    MolToMACROParams molToMacroMolParams) {
-  auto res = std::unique_ptr<MacroMol>(new MacroMol());
-
-  MolToMacroMol(res.get(), mol, templates, molToMacroMolParams);
-  return res;
-}
-
-void MolToMacroMol(MacroMol *res, const ROMol &mol,
-                   const RDKit::MacroMolTemplateLib &templates,
-                   MolToMACROParams molToMacroMolParams) {
-  Conformer *conf = nullptr;
-  if (mol.getNumConformers() > 0 && templates.doesLibHaveCoords()) {
-    conf = new Conformer();
-    conf->set3D(false);
-
-    res->addConformer(conf, true);
-  }
-
-  std::map<unsigned int, unsigned int> atomMap;
-  std::map<BondConnectionDef, std::string> bondConnectionMap;
-  for (const auto &templatePtr : templates) {
-    auto templateMol = templatePtr.get();
-    std::vector<std::string> templateNames;
-
-    std::string templateAtomClass;
-    std::string templateNameToUse;
-    templateMol->getPropIfPresent<std::string>(common_properties::molAtomClass,
-                                               templateAtomClass);
-    templateMol->getPropIfPresent<std::vector<std::string>>(
-        common_properties::templateNames, templateNames);
-    switch (molToMacroMolParams.macroUseTemplateName) {
-      case MACROUseTemplateName::UseFirstName:
-        templateNameToUse = templateNames[0];
-        break;
-      case MACROUseTemplateName::UseSecondName:
-        templateNameToUse = templateNames.back();
-        break;
-    }
-
-    // get the sgroup that is the base for this template
-
-    const RDKit::SubstanceGroup *sgroup = templateMol->getMainSgroup();
-
-    if (sgroup == nullptr) {
-      continue;  // skip this template
-    }
-    auto supAttachPoints = sgroup->getAttachPoints();
-
-    std::unique_ptr<RWMol> queryMol(new RWMol(*templateMol));
-
-    queryMol->beginBatchEdit();
-    for (auto atom : queryMol->atoms()) {
-      atom->setProp("origAtomId", atom->getIdx());
-
-      if (std::find(sgroup->getAtoms().begin(), sgroup->getAtoms().end(),
-                    atom->getIdx()) == sgroup->getAtoms().end()) {
-        queryMol->removeAtom(atom->getIdx());
-      }
-    }
-    queryMol->commitBatchEdit();
-    auto queryOut = RDKit::MolToMolBlock(*queryMol);
-
-    // find all occurrences of the template in the molecule
-
-    MolOps::sanitizeMol(*queryMol);
-
-    queryMol->updatePropertyCache(false);
-
-    std::vector<MatchVectType> matchVect;
-
-    SubstructMatchParameters params;
-    params.recursionPossible = false;
-    params.useChirality = true;
-    params.useQueryQueryMatches = false;
-    params.maxMatches = 0;  // find all matches
-
-    matchVect = SubstructMatch(mol, *queryMol, params);
-
-    if (!matchVect.size()) {
-      continue;
-    }
-
-    bool templateCopied = false;
-    for (const auto &match : matchVect) {
-      std::vector<unsigned int> atomsInMatch;
-
-      // add this match to the MacroMol if it is a valid hit
-
-      if (!isTemplateMatchAHit(match, mol, templateMol, queryMol.get(), atomMap,
-                               supAttachPoints, bondConnectionMap,
-                               atomsInMatch)) {
-        continue;
-      }
-
-      if (!templateCopied) {
-        // add the template to the MacroMol
-        std::unique_ptr<MacroMolTemplate> tempTemplate(
-            new MacroMolTemplate(*templateMol));
-        res->addTemplate(tempTemplate);
-        templateCopied = true;
-      }
-
-      auto newAtomIdx = res->getNumAtoms();
-      for (const auto atomMatch : atomsInMatch) {
-        atomMap[atomMatch] = newAtomIdx;
-      }
-
-      // create the macro atom reference
-
-      res->addAtom(new Atom(0), true, true);
-      auto resAtom = res->getAtomWithIdx(newAtomIdx);
-
-      resAtom->setAtomicNum(0);
-      resAtom->setProp(common_properties::dummyLabel, templateNameToUse);
-      resAtom->setProp(common_properties::molAtomClass, templateAtomClass);
-
-      if (conf) {
-        conf->resize(res->getNumAtoms());
-
-        RDGeom::Point3D pos;
-        for (const auto atomMatch : atomsInMatch) {
-          RDGeom::Point3D atomPos = mol.getConformer().getAtomPos(atomMatch);
-          pos += atomPos;
-        }
-        pos /= static_cast<double>(atomsInMatch.size());
-
-        conf->setAtomPos(resAtom->getIdx(), pos);
-      }
-    }
-  }
-
-  // add all atoms that are not in a template
-
-  for (const auto atom : mol.atoms()) {
-    if (!atomMap.contains(atom->getIdx())) {
-      auto newAtomIdx = res->getNumAtoms();
-      res->addAtom(new Atom(*atom), true, true);
-      atomMap[atom->getIdx()] = newAtomIdx;
-      if (conf) {
-        conf->resize(res->getNumAtoms());
-        conf->setAtomPos(newAtomIdx,
-                         mol.getConformer().getAtomPos(atom->getIdx()));
-      }
-    }
-  }
-
-  // bonds:  if the atoms of the original bonds are mapped to the same
-  // atom, they are in the template def
-
-  for (auto bond : mol.bonds()) {
-    unsigned int begAtomIdx = bond->getBeginAtomIdx();
-    unsigned int endAtomIdx = bond->getEndAtomIdx();
-
-    if (atomMap.contains(begAtomIdx) && atomMap.contains(endAtomIdx) &&
-        atomMap[begAtomIdx] == atomMap[endAtomIdx]) {
-      continue;
-    }
-
-    // bond'S atoms are in different new atoms - add the bond
-
-    res->addBond(atomMap[begAtomIdx], atomMap[endAtomIdx], bond->getBondType());
-    auto newBond = res->getBondWithIdx(res->getNumBonds() - 1);
-
-    if (bondConnectionMap.contains(BondConnectionDef(begAtomIdx, endAtomIdx))) {
-      newBond->setProp(
-          common_properties::_MolFileBondAttachPt1,
-          bondConnectionMap[BondConnectionDef(begAtomIdx, endAtomIdx)]);
-    }
-    if (bondConnectionMap.contains(BondConnectionDef(endAtomIdx, begAtomIdx))) {
-      newBond->setProp(
-          common_properties::_MolFileBondAttachPt2,
-          bondConnectionMap[BondConnectionDef(endAtomIdx, begAtomIdx)]);
-    }
-  }
-
-  return;
+std::unique_ptr<RDKit::RWMol> MolFromMacroMol(const MacroMol &macroMol) {
+  return MolFromMacroMol(&macroMol,
+                         RDKit::v2::FileParsers::MolFileParserParams(),
+                         RDKit::MolFromMacroMolParams());
 }
 
 }  // end of namespace RDKit
