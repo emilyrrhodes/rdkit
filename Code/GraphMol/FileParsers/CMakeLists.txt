@@ -108,6 +108,9 @@ rdkit_catch_test(fileParsersCatchTest file_parsers_catch.cpp
 rdkit_catch_test(macromolsCatchTest macromols_catch.cpp
     LINK_LIBRARIES FileParsers)
 
+rdkit_catch_test(testMacroMol testMacroMol.cpp
+    LINK_LIBRARIES FileParsers GeneralizedSubstruct SmilesParse)
+
 rdkit_catch_test(testPropertyLists testPropertyLists.cpp
     LINK_LIBRARIES FileParsers)
 

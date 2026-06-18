@@ -117,7 +117,7 @@ void RDKit::MacroMol::addMacroBond(unsigned int fromAtomIdx,
                                    Bond::BondType bondType,
                                    std::string fromConnectionPoint,
                                    std::string toConnectionPoint) {
-  auto bondIdx = this->addBond(fromAtomIdx, toAtomIdx, bondType);
+  auto bondIdx = this->addBond(fromAtomIdx, toAtomIdx, bondType) - 1;
   auto bond = this->getBondWithIdx(bondIdx);
   this->setBondBookmark(bond, bondIdx);
 
