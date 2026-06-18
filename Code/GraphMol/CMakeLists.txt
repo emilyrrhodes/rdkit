@@ -1,6 +1,6 @@
 rdkit_library(GraphMol
         Atom.cpp QueryAtom.cpp QueryBond.cpp Bond.cpp
-        MolOps.cpp FindRings.cpp ROMol.cpp RWMol.cpp  MacroMol.cpp PeriodicTable.cpp
+        MolOps.cpp FindRings.cpp ROMol.cpp RWMol.cpp  MacroMol.cpp MacroMolTemplate.cpp PeriodicTable.cpp
         atomic_data.cpp QueryOps.cpp MolPickler.cpp Canon.cpp
         AtomIterators.cpp BondIterators.cpp Aromaticity.cpp Kekulize.cpp
         ConjugHybrid.cpp AddHs.cpp
@@ -43,6 +43,7 @@ rdkit_headers(Atom.h
         ROMol.h
         RWMol.h
         MacroMol.h
+        MacroMolTemplate.h
         SanitException.h
         SubstanceGroup.h
         StereoGroup.h
