@@ -77,16 +77,6 @@ class RDKIT_GRAPHMOL_EXPORT MacroMolTemplateLib {
   std::unordered_map<MacroMolTemplateKey, unsigned int, MacroMolTemplateKeyHash>
       d_keyToIndex;
 
- protected:
-  RDKit::MacroMolTemplate *findMutable(const std::string &templateClass,
-                                       const std::string &templateName) {
-    auto iter = d_keyToIndex.find({templateClass, templateName});
-    if (iter == d_keyToIndex.end()) {
-      return nullptr;
-    }
-    return d_templates.at(iter->second).get();
-  }
-
  public:
   MacroMolTemplateLib() = default;
   MacroMolTemplateLib(const MacroMolTemplateLib &other) = delete;
@@ -113,8 +103,6 @@ class RDKIT_GRAPHMOL_EXPORT MacroMolTemplateLib {
   void addTemplate(std::unique_ptr<MacroMolTemplate> &templateMol);
   void copyTemplateLib(const MacroMolTemplateLib &libToCopy);
 
-  unsigned int size() const { return d_templates.size(); }
-
   const RDKit::MacroMolTemplate *find(const std::string &templateClass,
                                       const std::string &templateName) const {
     auto iter = d_keyToIndex.find({templateClass, templateName});
@@ -122,11 +110,6 @@ class RDKIT_GRAPHMOL_EXPORT MacroMolTemplateLib {
       return nullptr;
     }
     return d_templates.at(iter->second).get();
-  }
-
-  bool contains(const std::string &templateClass,
-                const std::string &templateName) const {
-    return d_keyToIndex.contains({templateClass, templateName});
   }
 
   bool doesLibHaveCoords() const {
@@ -139,7 +122,6 @@ class RDKIT_GRAPHMOL_EXPORT MacroMolTemplateLib {
   }
 };
 
-typedef boost::shared_ptr<MacroMolTemplate> MacroMolTemplate_SPTR;
 }  // namespace RDKit
 
 #endif

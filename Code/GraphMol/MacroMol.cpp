@@ -20,12 +20,6 @@
 
 namespace RDKit {
 
-MacroMol::MacroMol(bool useGlobalLibrary) {
-  if (useGlobalLibrary) {
-    d_globalLib = &MacroMolTemplateLib::getGlobalLibrary();
-  }
-}
-
 unsigned int RDKit::MacroMol::addMacroAtom(
     std::string className, std::string templateName,
     std::optional<unsigned int> residueNumber,
@@ -69,27 +63,6 @@ void RDKit::MacroMol::addMacroBond(unsigned int fromAtomIdx,
   }
 }
 
-MacroMolTemplate *MacroMol::getMutableTemplate(unsigned int atomIdx) {
-  const auto atom = this->getAtomWithIdx(atomIdx);
-
-  std::string atomClass;
-  std::string dummyLabel = "";
-  if (!atom->getPropIfPresent(common_properties::dummyLabel, dummyLabel) ||
-      dummyLabel == "" ||
-      !atom->getPropIfPresent(common_properties::molAtomClass, atomClass) ||
-      atomClass == "") {
-    return nullptr;  // ordinary atom, not a macro atom
-  }
-
-  auto templatePtr = d_templateLibrary.findMutable(atomClass, dummyLabel);
-  if (templatePtr == nullptr) {
-    std::ostringstream errout;
-    errout << "Template not found for atom " << dummyLabel;
-    throw RDKit::FileParseException(errout.str());
-  }
-  return templatePtr;
-}
-
 const MacroMolTemplate *RDKit::MacroMol::getTemplate(
     unsigned int atomIdx) const {
   const auto atom = this->getAtomWithIdx(atomIdx);
@@ -105,9 +78,8 @@ const MacroMolTemplate *RDKit::MacroMol::getTemplate(
 
   auto templatePtr = d_templateLibrary.find(atomClass, dummyLabel);
   if (templatePtr == nullptr) {
-    const MacroMolTemplateLib *globalLib =
-        d_globalLib ? d_globalLib : &MacroMolTemplateLib::getGlobalLibrary();
-    templatePtr = globalLib->find(atomClass, dummyLabel);
+    templatePtr =
+        MacroMolTemplateLib::getGlobalLibrary().find(atomClass, dummyLabel);
   }
   if (templatePtr == nullptr) {
     std::ostringstream errout;

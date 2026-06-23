@@ -28,28 +28,12 @@
 namespace RDKit {
 namespace {
 
-class BondConnectionDef {
- public:
-  BondConnectionDef(unsigned int atomIdx1Init, unsigned int atomIdx2Init)
-      : atomIdx1(atomIdx1Init), atomIdx2(atomIdx2Init) {}
-
-  unsigned int atomIdx1;
-  unsigned int atomIdx2;
-
- public:
-  bool operator<(const BondConnectionDef &other) const {
-    if (atomIdx1 != other.atomIdx1) {
-      return atomIdx1 < other.atomIdx1;
-    }
-    return atomIdx2 < other.atomIdx2;
-  }
-};
-
 bool isTemplateMatchAHit(
     const MatchVectType &match, const ROMol &mol, const ROMol *templateMol,
     const RWMol *queryMol, std::map<unsigned int, unsigned int> &atomMap,
     const std::vector<SubstanceGroup::AttachPoint> &supAttachPoints,
-    std::map<BondConnectionDef, std::string> &bondConnectionMap,
+    std::map<std::pair<unsigned int, unsigned int>, std::string>
+        &bondConnectionMap,
     std::vector<unsigned int> &atomsInMatch) {
   // get a new set of match points to be used for the new template ref atoms
   atomsInMatch.clear();
@@ -137,7 +121,7 @@ bool isTemplateMatchAHit(
               // save the attach point relative to the full atom molecule being
               // converted
 
-              bondConnectionMap[BondConnectionDef(atom->getIdx(), nbrAtomIdx)] =
+              bondConnectionMap[std::pair(atom->getIdx(), nbrAtomIdx)] =
                   attachPoint.id;
             }
             break;
@@ -171,7 +155,8 @@ std::unique_ptr<RDKit::MacroMol> MolToMacroMol(
   }
 
   std::map<unsigned int, unsigned int> atomMap;
-  std::map<BondConnectionDef, std::string> bondConnectionMap;
+  std::map<std::pair<unsigned int, unsigned int>, std::string>
+      bondConnectionMap;
   for (const auto &templateEntry : templates) {
     auto templateMol = templateEntry.get();
     templateMol->updatePropertyCache(false);
@@ -317,15 +302,13 @@ std::unique_ptr<RDKit::MacroMol> MolToMacroMol(
                        bond->getBondType());
     auto newBond = macro_mol->getBondWithIdx(macro_mol->getNumBonds() - 1);
 
-    if (bondConnectionMap.contains(BondConnectionDef(begAtomIdx, endAtomIdx))) {
-      newBond->setProp(
-          common_properties::_MolFileBondAttachPt1,
-          bondConnectionMap[BondConnectionDef(begAtomIdx, endAtomIdx)]);
+    if (bondConnectionMap.contains(std::pair(begAtomIdx, endAtomIdx))) {
+      newBond->setProp(common_properties::_MolFileBondAttachPt1,
+                       bondConnectionMap[std::pair(begAtomIdx, endAtomIdx)]);
     }
-    if (bondConnectionMap.contains(BondConnectionDef(endAtomIdx, begAtomIdx))) {
-      newBond->setProp(
-          common_properties::_MolFileBondAttachPt2,
-          bondConnectionMap[BondConnectionDef(endAtomIdx, begAtomIdx)]);
+    if (bondConnectionMap.contains(std::pair(endAtomIdx, begAtomIdx))) {
+      newBond->setProp(common_properties::_MolFileBondAttachPt2,
+                       bondConnectionMap[std::pair(endAtomIdx, begAtomIdx)]);
     }
   }
 
