@@ -60,10 +60,11 @@ unsigned int RDKit::MacroMol::addMacroAtom(
 
 void RDKit::MacroMol::addMacroBond(unsigned int fromAtomIdx,
                                    unsigned int toAtomIdx,
-                                   Bond::BondType bondType,
                                    int fromConnectionPoint,
-                                   int toConnectionPoint) {
-  auto bondIdx = this->addBond(fromAtomIdx, toAtomIdx, bondType) - 1;
+                                   int toConnectionPoint,
+                                   std::optional<Bond::BondType> bondType) {
+  const auto resolvedBondType = bondType.value_or(Bond::BondType::SINGLE);
+  auto bondIdx = this->addBond(fromAtomIdx, toAtomIdx, resolvedBondType) - 1;
   auto bond = this->getBondWithIdx(bondIdx);
   this->setBondBookmark(bond, bondIdx);
   bond->setProp(common_properties::_MolFileBondAttachPt2, toConnectionPoint);

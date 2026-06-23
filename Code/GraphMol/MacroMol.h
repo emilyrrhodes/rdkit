@@ -72,8 +72,8 @@ class RDKIT_GRAPHMOL_EXPORT MacroMol : public RWMol {
       std::optional<std::string> chainId = std::nullopt);
 
   void addMacroBond(unsigned int fromAtomIdx, unsigned int toAtomIdx,
-                    Bond::BondType bondType, int fromConnectionPoint,
-                    int toConnectionPoint);
+                    int fromConnectionPoint, int toConnectionPoint,
+                    std::optional<Bond::BondType> bondType = std::nullopt);
 };
 }  // namespace RDKit
 
