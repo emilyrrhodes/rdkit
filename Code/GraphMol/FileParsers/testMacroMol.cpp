@@ -28,10 +28,10 @@ TEST_CASE("testBuildMacroMol") {
   auto macro_atom_1 = macro_mol->addMacroAtom(MonomerClass::AA, "A");
   auto macro_atom_2 = macro_mol->addMacroAtom(MonomerClass::AA, "C");
   auto macro_atom_3 = macro_mol->addMacroAtom(MonomerClass::AA, "D");
-  macro_mol->addMacroBond(macro_atom_1, macro_atom_2, Bond::BondType::SINGLE,
-                          "2", "1");
-  macro_mol->addMacroBond(macro_atom_2, macro_atom_3, Bond::BondType::SINGLE,
-                          "2", "1");
+  macro_mol->addMacroBond(macro_atom_1, macro_atom_2, Bond::BondType::SINGLE, 2,
+                          1);
+  macro_mol->addMacroBond(macro_atom_2, macro_atom_3, Bond::BondType::SINGLE, 2,
+                          1);
   CHECK(macro_mol->getNumAtoms() == 3);
   CHECK(macro_mol->getNumBonds() == 2);
   std::string sequence;
@@ -76,9 +76,9 @@ TEST_CASE("testSubstructureSearchWithMacroMols") {
   auto macro_atom_2 = simple_macro_mol->addMacroAtom(MonomerClass::AA, "Y");
   auto macro_atom_3 = simple_macro_mol->addMacroAtom(MonomerClass::AA, "E");
   simple_macro_mol->addMacroBond(macro_atom_1, macro_atom_2,
-                                 Bond::BondType::SINGLE, "2", "1");
+                                 Bond::BondType::SINGLE, 2, 1);
   simple_macro_mol->addMacroBond(macro_atom_2, macro_atom_3,
-                                 Bond::BondType::SINGLE, "2", "1");
+                                 Bond::BondType::SINGLE, 2, 1);
 
   RDKit::GeneralizedSubstruct::ExtendedQueryMol query(
       std::make_unique<RWMol>(*simple_macro_mol));
@@ -96,32 +96,24 @@ TEST_CASE("testUniversalAttachmentPointConventions") {
   auto mm_1_atom_1 = macro_mol_1->addMacroAtom(MonomerClass::AA, "A");
   auto mm_1_atom_2 = macro_mol_1->addMacroAtom(MonomerClass::AA, "C");
   auto mm_1_atom_3 = macro_mol_1->addMacroAtom(MonomerClass::AA, "D");
-  macro_mol_1->addMacroBond(mm_1_atom_1, mm_1_atom_2, Bond::BondType::SINGLE,
-                            "2", "1");
-  macro_mol_1->addMacroBond(mm_1_atom_2, mm_1_atom_3, Bond::BondType::SINGLE,
-                            "2", "1");
+  macro_mol_1->addMacroBond(mm_1_atom_1, mm_1_atom_2, Bond::BondType::SINGLE, 2,
+                            1);
+  macro_mol_1->addMacroBond(mm_1_atom_2, mm_1_atom_3, Bond::BondType::SINGLE, 2,
+                            1);
 
   auto macro_mol_2 = std::make_unique<MacroMol>();
   auto mm_2_atom_1 = macro_mol_2->addMacroAtom(MonomerClass::AA, "A");
   auto mm_2_atom_2 = macro_mol_2->addMacroAtom(MonomerClass::AA, "C");
   macro_mol_2->addMacroBond(
-      mm_2_atom_1, mm_2_atom_2, Bond::BondType::SINGLE, "2",
-      "1");  // NOTE: SAME attachment point convention than macro_mol_1
+      mm_2_atom_1, mm_2_atom_2, Bond::BondType::SINGLE, 2,
+      1);  // NOTE: SAME attachment point location as macro_mol_1
 
   auto macro_mol_3 = std::make_unique<MacroMol>();
   auto mm_3_atom_1 = macro_mol_3->addMacroAtom(MonomerClass::AA, "A");
   auto mm_3_atom_2 = macro_mol_3->addMacroAtom(MonomerClass::AA, "C");
   macro_mol_3->addMacroBond(
-      mm_3_atom_1, mm_3_atom_2, Bond::BondType::SINGLE, "2",
-      "R1");  // NOTE: DIFFERENT attachment point convention as macro_mol_1
-
-  auto macro_mol_4 = std::make_unique<MacroMol>();
-  auto mm_4_atom_1 = macro_mol_4->addMacroAtom(MonomerClass::AA, "A");
-  auto mm_4_atom_2 = macro_mol_4->addMacroAtom(MonomerClass::AA, "C");
-  macro_mol_4->addMacroBond(mm_4_atom_1, mm_4_atom_2, Bond::BondType::SINGLE,
-                            "2",
-                            "3");  // NOTE: DIFFERENT attachment point location
-                                   // compared to macro_mol_1
+      mm_3_atom_1, mm_3_atom_2, Bond::BondType::SINGLE, 2,
+      3);  // NOTE: DIFFERENT attachment point location as macro_mol_1
 
   RDKit::GeneralizedSubstruct::ExtendedQueryMol query_2(
       std::make_unique<RWMol>(*macro_mol_2));
@@ -132,13 +124,8 @@ TEST_CASE("testUniversalAttachmentPointConventions") {
       std::make_unique<RWMol>(*macro_mol_3));
   auto match_1_3 =
       RDKit::GeneralizedSubstruct::hasSubstructMatch(*macro_mol_1, query_3);
-  CHECK(match_1_3);
-  RDKit::GeneralizedSubstruct::ExtendedQueryMol query_4(
-      std::make_unique<RWMol>(*macro_mol_4));
-  auto match_1_4 =
-      RDKit::GeneralizedSubstruct::hasSubstructMatch(*macro_mol_1, query_4);
   CHECK(
-      match_1_4);  // This should fail because a change in the attachment point
+      match_1_3);  // This should fail because a change in the attachment point
                    // location should be considered a change chemical structure
 }
 
@@ -150,10 +137,10 @@ TEST_CASE("testMacroMolToAtomisticMol") {
   auto macro_atom_1 = macro_mol->addMacroAtom(MonomerClass::AA, "A");
   auto macro_atom_2 = macro_mol->addMacroAtom(MonomerClass::AA, "C");
   auto macro_atom_3 = macro_mol->addMacroAtom(MonomerClass::AA, "D");
-  macro_mol->addMacroBond(macro_atom_1, macro_atom_2, Bond::BondType::SINGLE,
-                          "2", "1");
-  macro_mol->addMacroBond(macro_atom_2, macro_atom_3, Bond::BondType::SINGLE,
-                          "2", "1");
+  macro_mol->addMacroBond(macro_atom_1, macro_atom_2, Bond::BondType::SINGLE, 2,
+                          1);
+  macro_mol->addMacroBond(macro_atom_2, macro_atom_3, Bond::BondType::SINGLE, 2,
+                          1);
 
   // outputSgroups=false so the leaving-group hydrogens at unused attachment
   // points (the N-terminal amine H and the cysteine thiol H) are collapsed to
@@ -182,19 +169,19 @@ TEST_CASE("testMacroMolCanonicalize") {
   auto mm_1_atom_1 = macro_mol_1->addMacroAtom(MonomerClass::AA, "A");
   auto mm_1_atom_2 = macro_mol_1->addMacroAtom(MonomerClass::AA, "C");
   auto mm_1_atom_3 = macro_mol_1->addMacroAtom(MonomerClass::AA, "D");
-  macro_mol_1->addMacroBond(mm_1_atom_1, mm_1_atom_2, Bond::BondType::SINGLE,
-                            "2", "1");
-  macro_mol_1->addMacroBond(mm_1_atom_2, mm_1_atom_3, Bond::BondType::SINGLE,
-                            "2", "1");
+  macro_mol_1->addMacroBond(mm_1_atom_1, mm_1_atom_2, Bond::BondType::SINGLE, 2,
+                            1);
+  macro_mol_1->addMacroBond(mm_1_atom_2, mm_1_atom_3, Bond::BondType::SINGLE, 2,
+                            1);
 
   auto macro_mol_2 = std::make_unique<MacroMol>();
   auto mm_2_atom_1 = macro_mol_2->addMacroAtom(MonomerClass::AA, "C");
   auto mm_2_atom_2 = macro_mol_2->addMacroAtom(MonomerClass::AA, "D");
   auto mm_2_atom_3 = macro_mol_2->addMacroAtom(MonomerClass::AA, "A");
-  macro_mol_2->addMacroBond(mm_2_atom_3, mm_2_atom_1, Bond::BondType::SINGLE,
-                            "2", "1");
-  macro_mol_2->addMacroBond(mm_2_atom_1, mm_2_atom_2, Bond::BondType::SINGLE,
-                            "2", "1");
+  macro_mol_2->addMacroBond(mm_2_atom_3, mm_2_atom_1, Bond::BondType::SINGLE, 2,
+                            1);
+  macro_mol_2->addMacroBond(mm_2_atom_1, mm_2_atom_2, Bond::BondType::SINGLE, 2,
+                            1);
 
   auto can_smiles_1 = RDKit::MolToSmiles(*macro_mol_1);
   auto can_smiles_2 = RDKit::MolToSmiles(*macro_mol_2);

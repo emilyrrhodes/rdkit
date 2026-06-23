@@ -18,7 +18,12 @@
 
 namespace RDKit {
 
-enum class MonomerClass { AA, NA, CHEM, OTHER };
+enum class MonomerClass {
+  AA,
+  NA,
+  CHEM,
+  OTHER
+};
 
 RDKIT_GRAPHMOL_EXPORT std::string monomerClassToString(
     MonomerClass monomerClass);
@@ -58,8 +63,8 @@ class RDKIT_GRAPHMOL_EXPORT MacroMol : public RWMol {
       std::optional<std::string> chainId = std::nullopt);
 
   void addMacroBond(unsigned int fromAtomIdx, unsigned int toAtomIdx,
-                    Bond::BondType bondType, std::string fromConnectionPoint,
-                    std::string toConnectionPoint);
+                    Bond::BondType bondType, int fromConnectionPoint,
+                    int toConnectionPoint);
 };
 }  // namespace RDKit
 
