@@ -13,6 +13,7 @@
 
 #include "MacroMolTemplate.h"
 
+#include <memory>
 #include <optional>
 #include <string>
 
@@ -30,31 +31,39 @@ RDKIT_GRAPHMOL_EXPORT std::string monomerClassToString(
 
 class RDKIT_GRAPHMOL_EXPORT MacroMol : public RWMol {
  private:
-  // elements (MacroMolTemplate items) of the library are owned by the library
-  MacroMolTemplateLib d_templateLibrary;
+  // The template library (and the MacroMolTemplate items it owns) is shared
+  // between copies; templates are immutable once added, so copies can safely
+  // share the same library.  addTemplate() copies-on-write to preserve value
+  // semantics when the library is shared.
+  std::shared_ptr<MacroMolTemplateLib> d_templateLibrary =
+      std::make_shared<MacroMolTemplateLib>();
 
  public:
   MacroMol() = default;
-  MacroMol(const MacroMol &other) : RWMol((RWMol)other) {
-    d_templateLibrary.copyTemplateLib(*other.getTemplateLibrary());
-  }
+  MacroMol(const MacroMol &other)
+      : RWMol((RWMol)other), d_templateLibrary(other.d_templateLibrary) {}
   MacroMol(MacroMol &&other) noexcept = delete;
   MacroMol &operator=(MacroMol &&other) noexcept = delete;
 
   MacroMol &operator=(const MacroMol &) = delete;  // disable assignment
 
-  ~MacroMol() {}
-
   const MacroMolTemplate *getTemplate(unsigned int atomIdx) const;
 
   const MacroMolTemplateLib *getTemplateLibrary() const {
-    return &d_templateLibrary;
+    return d_templateLibrary.get();
   }
 
-  // the following adds a template to the internal libraty for this MacroMol
+  // the following adds a template to the internal library for this MacroMol
   void addTemplate(std::unique_ptr<MacroMolTemplate> &templateMol) {
     PRECONDITION(templateMol, "bad template molecule");
-    d_templateLibrary.addTemplate(templateMol);
+    // copy-on-write: if the library is shared with another MacroMol, take a
+    // private copy before mutating it.
+    if (d_templateLibrary.use_count() > 1) {
+      auto privateLib = std::make_shared<MacroMolTemplateLib>();
+      privateLib->copyTemplateLib(*d_templateLibrary);
+      d_templateLibrary = std::move(privateLib);
+    }
+    d_templateLibrary->addTemplate(templateMol);
   }
 
   unsigned int addMacroAtom(

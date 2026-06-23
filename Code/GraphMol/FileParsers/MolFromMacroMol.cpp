@@ -173,6 +173,9 @@ std::unique_ptr<RDKit::RWMol> MolFromMacroMol(
       auto confCount = templateMol->getNumConformers();
       if (confCount == 0) {
         conf = nullptr;
+        newConf.reset();
+        templateCentroids.clear();
+        maxSize = 0.0;
         break;
       }
       templateConf = &templateMol->getConformer(0);
@@ -278,8 +281,11 @@ std::unique_ptr<RDKit::RWMol> MolFromMacroMol(
       std::vector<std::string> templateNames;
       std::string templateNameToUse;
 
-      templateMol->getProp<std::vector<std::string>>(
-          common_properties::templateNames, templateNames);
+      if (!templateMol->getPropIfPresent(common_properties::templateNames,
+                                         templateNames) ||
+          templateNames.empty()) {
+        throw FileParseException("Template is missing template names");
+      }
       switch (molFromMacroMolParams.macroTemplateNames) {
         case MacroMolTemplateNames::UseFirstName:
           templateNameToUse = templateNames[0];
@@ -327,8 +333,8 @@ std::unique_ptr<RDKit::RWMol> MolFromMacroMol(
       }
 
       copySgroupIntoResult(*mol, *macroMol, atomIdx, *sgroup, sgroupName,
-                           newSgroups, newConf.get(), coordOffset,
-                           originAtomMap);
+                           newSgroups, conf ? newConf.get() : nullptr,
+                           coordOffset, originAtomMap);
 
       // if we are including atoms from leaving groups, go through the
       // attachment points of the main sgroup. If the attach point is
@@ -365,7 +371,8 @@ std::unique_ptr<RDKit::RWMol> MolFromMacroMol(
                 }
                 sgroupName += "_" + attachPoint.id;
                 copySgroupIntoResult(*mol, *macroMol, atomIdx, lgSgroup,
-                                     sgroupName, newSgroups, newConf.get(),
+                                     sgroupName, newSgroups,
+                                     conf ? newConf.get() : nullptr,
                                      coordOffset, originAtomMap);
 
                 break;
@@ -462,14 +469,9 @@ std::unique_ptr<RDKit::RWMol> MolFromMacroMol(
     processBondInMainMol(bond, *mol, originAtomMap, attachMap);
   }
 
-  // copy any attrs from the main mol
+  // copy any attrs from the main mol (preserving their original types)
 
-  for (auto &prop : macroMol->getPropList(false, false)) {
-    std::string propVal;
-    if (macroMol->getPropIfPresent(prop, propVal)) {
-      mol->setProp(prop, propVal);
-    }
-  }
+  mol->updateProps(*macroMol, false);
 
   // copy the sgroups from the main mol for atoms not in a template
 
@@ -556,18 +558,18 @@ std::unique_ptr<RDKit::RWMol> MolFromMacroMol(
           newGroupBonds.push_back(newBond);
         }
       }
+    }
 
-      if (sg.getGroupType() == StereoGroupType::STEREO_ABSOLUTE) {
-        absoluteAtoms.insert(absoluteAtoms.end(), newGroupAtoms.begin(),
-                             newGroupAtoms.end());
-        absoluteBonds.insert(absoluteBonds.end(), newGroupBonds.begin(),
-                             newGroupBonds.end());
-      } else {
-        // make a new group
+    if (sg.getGroupType() == StereoGroupType::STEREO_ABSOLUTE) {
+      absoluteAtoms.insert(absoluteAtoms.end(), newGroupAtoms.begin(),
+                           newGroupAtoms.end());
+      absoluteBonds.insert(absoluteBonds.end(), newGroupBonds.begin(),
+                           newGroupBonds.end());
+    } else {
+      // make a new group
 
-        newStereoGroups.emplace_back(sg.getGroupType(), newGroupAtoms,
-                                     newGroupBonds);
-      }
+      newStereoGroups.emplace_back(sg.getGroupType(), newGroupAtoms,
+                                   newGroupBonds);
     }
   }
 
@@ -583,23 +585,32 @@ std::unique_ptr<RDKit::RWMol> MolFromMacroMol(
     mol->setStereoGroups(newStereoGroups);
   }
 
-  // finishMolProcessing reads getConformer() unconditionally.  When the
-  // source MacroMol had no coordinates the result has no conformer, so give
-  // it a default 2D conformer (positions are meaningless, but chirality is
-  // preserved from the template atom tags rather than from coordinates).
+  // finishMolProcessing reads getConformer() unconditionally. When the result
+  // has no coordinates, temporarily give it a default 2D conformer. The
+  // positions are meaningless, so remove this again before returning.
+  bool addedTemporaryConformer = false;
+  unsigned int temporaryConformerId = 0;
   if (mol->getNumConformers() == 0) {
     auto *defaultConf = new Conformer(mol->getNumAtoms());
     defaultConf->set3D(false);
-    mol->addConformer(defaultConf, true);
+    temporaryConformerId = mol->addConformer(defaultConf, true);
+    addedTemporaryConformer = true;
   }
 
   bool chiralityPossible = false;
   RDKit::FileParserUtils::finishMolProcessing(mol.get(), chiralityPossible,
                                               molFileParserParams);
 
-  unsigned int failedOp = 0;
-  MolOps::sanitizeMol(*(mol.get()), failedOp, MolOps::SANITIZE_KEKULIZE);
-  MolOps::sanitizeMol(*(mol.get()), failedOp, MolOps::SANITIZE_SETAROMATICITY);
+  if (molFileParserParams.sanitize) {
+    unsigned int failedOp = 0;
+    MolOps::sanitizeMol(*(mol.get()), failedOp, MolOps::SANITIZE_KEKULIZE);
+    MolOps::sanitizeMol(*(mol.get()), failedOp,
+                        MolOps::SANITIZE_SETAROMATICITY);
+  }
+
+  if (addedTemporaryConformer) {
+    mol->removeConformer(temporaryConformerId);
+  }
 
   return std::move(mol);
 }

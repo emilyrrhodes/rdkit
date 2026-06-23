@@ -194,6 +194,16 @@ namespace {
 // Register the builtin loader so the global library is populated lazily the
 // first time MacroMolTemplateLib::getGlobalLibrary() is called.  GraphMol
 // cannot call SmilesToMol itself, so the FileParsers layer supplies the loader.
+//
+// NOTE: this registration relies on this translation unit's static initializer
+// running, which in turn requires that RDKitFileParsers be linked and this
+// object file not be dropped by the linker.  That holds for the normal shared
+// builds (all of a shared library's global constructors run at load time).  In
+// a static-library build where nothing else references a symbol in this TU, the
+// linker may discard it and the global library would come up empty.  If that
+// configuration is ever needed, force-link this object (e.g. via
+// --whole-archive / OBJECT library inclusion in CMake) rather than relying on
+// the static initializer below.
 struct BuiltinTemplateRegistrar {
   BuiltinTemplateRegistrar() {
     MacroMolTemplateLib::setGlobalLibraryLoader(&loadBuiltinMacroMolTemplates);

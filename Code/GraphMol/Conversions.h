@@ -20,16 +20,6 @@ struct MolFileParserParams;
 }
 }  // namespace v2
 
-enum class MacroMolUseTemplateName {
-  UseFirstName,
-  UseSecondName,
-};
-
-struct RDKIT_FILEPARSERS_EXPORT MolToMacroMolParams {
-  MacroMolUseTemplateName macroUseTemplateName =
-      MacroMolUseTemplateName::UseFirstName;
-};
-
 enum class MacroMolTemplateNames {
   AsEntered,
   UseFirstName,
@@ -37,10 +27,12 @@ enum class MacroMolTemplateNames {
   All,
 };
 
+struct RDKIT_FILEPARSERS_EXPORT MolToMacroMolParams {
+  MacroMolTemplateNames macroTemplateNames = MacroMolTemplateNames::UseFirstName;
+};
+
 struct RDKIT_FILEPARSERS_EXPORT MolFromMacroMolParams {
-  bool includeLeavingGroups =
-      true; /**< when true, leaving groups on atoms that are not exo-bonded are
-                retained.  When false, no leaving groups are retained */
+  bool includeLeavingGroups = true;
   bool outputSgroups = true;
   MacroMolTemplateNames macroTemplateNames = MacroMolTemplateNames::AsEntered;
 };

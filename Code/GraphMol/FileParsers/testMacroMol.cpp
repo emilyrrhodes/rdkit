@@ -178,6 +178,7 @@ TEST_CASE("testMacroMolToAtomisticMol") {
       molFromMacroMolParams);
   CHECK(atomistic_mol->getNumAtoms() == 20);
   CHECK(atomistic_mol->getNumBonds() == 19);
+  CHECK(atomistic_mol->getNumConformers() == 0);
   auto smiles = RDKit::MolToSmiles(*atomistic_mol);
   // compare canonical-to-canonical so the check is independent of the input
   // SMILES atom ordering

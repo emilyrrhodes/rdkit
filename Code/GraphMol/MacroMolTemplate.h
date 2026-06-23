@@ -11,13 +11,13 @@
 #ifndef RD_MACROMOLTEMPLATE_H
 #define RD_MACROMOLTEMPLATE_H
 
-#include <RDGeneral/FileParseException.h>
-#include <RDGeneral/BadFileException.h>
-#include "FileParsers/FileParsers.h"
-#include "FileParsers/FileParserUtils.h"
+#include <RDGeneral/export.h>
+#include <GraphMol/RWMol.h>
+#include <GraphMol/SubstanceGroup.h>
 #include <functional>
 #include <mutex>
 #include <unordered_map>
+#include <utility>
 
 namespace RDKit {
 
@@ -65,12 +65,13 @@ class RDKIT_GRAPHMOL_EXPORT MacroMolTemplateLib {
   //! Key is (monomer_class, symbol)
   using MacroMolTemplateKey = std::pair<std::string, std::string>;
 
-  //! Hash function for MacroMolTemplateKey
+  //! Hash for MacroMolTemplateKey using the standard hash_combine mixer.
   struct MacroMolTemplateKeyHash {
     std::size_t operator()(const MacroMolTemplateKey &key) const {
-      std::size_t h1 = std::hash<std::string>{}(key.first);
-      std::size_t h2 = std::hash<std::string>{}(key.second);
-      return h1 ^ (h2 << 1);
+      std::size_t seed = std::hash<std::string>{}(key.first);
+      seed ^= std::hash<std::string>{}(key.second) + 0x9e3779b9 + (seed << 6) +
+              (seed >> 2);
+      return seed;
     }
   };
 

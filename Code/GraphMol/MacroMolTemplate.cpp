@@ -8,12 +8,14 @@
 //  of the RDKit source tree.
 //
 #include <RDGeneral/FileParseException.h>
-#include <RDGeneral/BadFileException.h>
-#include "FileParsers/FileParsers.h"
-#include "FileParsers/FileParserUtils.h"
 
 #include "MacroMolTemplate.h"
 #include "Atom.h"
+
+#include <climits>
+#include <memory>
+#include <sstream>
+#include <utility>
 
 namespace RDKit {
 
@@ -104,11 +106,10 @@ MacroMolTemplate::MacroMolTemplate(
     std::unique_ptr<RWMol> &mol, std::string className,
     std::string templateName,
     std::vector<std::pair<std::string, std::string>> templateAttrs)
-    : RWMol(std::move(*mol)) {
+    : MacroMolTemplate(mol, std::move(className),
+                       std::vector<std::string>{templateName},
+                       std::move(templateAttrs)) {
   PRECONDITION(!templateName.empty(), "no name for template");
-
-  std::vector<std::string> templateNames(1, templateName);
-  MacroMolTemplate::init(className, templateNames, templateAttrs);
 }
 
 void MacroMolTemplate::initMainSgroupIdx() const {

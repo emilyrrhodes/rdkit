@@ -37,7 +37,6 @@ bool isTemplateMatchAHit(
     std::vector<unsigned int> &atomsInMatch) {
   // get a new set of match points to be used for the new template ref atoms
   atomsInMatch.clear();
-  // newAttachOrds.clear();
   std::map<unsigned int, unsigned int> molToQueryMap;
 
   // check to see if any of the atoms or bonds are already used
@@ -166,14 +165,27 @@ std::unique_ptr<RDKit::MacroMol> MolToMacroMol(
     std::string templateNameToUse;
     templateMol->getPropIfPresent<std::string>(common_properties::molAtomClass,
                                                templateAtomClass);
-    templateMol->getPropIfPresent<std::vector<std::string>>(
-        common_properties::templateNames, templateNames);
-    switch (molToMacroMolParams.macroUseTemplateName) {
-      case MacroMolUseTemplateName::UseFirstName:
-        templateNameToUse = templateNames[0];
-        break;
-      case MacroMolUseTemplateName::UseSecondName:
+    if (!templateMol->getPropIfPresent<std::vector<std::string>>(
+            common_properties::templateNames, templateNames) ||
+        templateNames.empty()) {
+      throw FileParseException("Template is missing template names");
+    }
+    switch (molToMacroMolParams.macroTemplateNames) {
+      case MacroMolTemplateNames::UseSecondName:
         templateNameToUse = templateNames.back();
+        break;
+      case MacroMolTemplateNames::All:
+        templateNameToUse = "";
+        for (const auto &nm : templateNames) {
+          if (!templateNameToUse.empty()) {
+            templateNameToUse += "+";
+          }
+          templateNameToUse += nm;
+        }
+        break;
+      case MacroMolTemplateNames::AsEntered:
+      case MacroMolTemplateNames::UseFirstName:
+        templateNameToUse = templateNames[0];
         break;
     }
 
@@ -249,7 +261,6 @@ std::unique_ptr<RDKit::MacroMol> MolToMacroMol(
       macro_mol->addAtom(new Atom(0), true, true);
       auto macro_mol_atom = macro_mol->getAtomWithIdx(newAtomIdx);
 
-      macro_mol_atom->setAtomicNum(0);
       macro_mol_atom->setProp(common_properties::dummyLabel, templateNameToUse);
       macro_mol_atom->setProp(common_properties::molAtomClass,
                               templateAtomClass);

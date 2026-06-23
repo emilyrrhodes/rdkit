@@ -31,7 +31,7 @@ std::string monomerClassToString(MonomerClass monomerClass) {
     case MonomerClass::OTHER:
       return "OTHER";
   }
-  return "OTHER";
+  return "OTHER";  // unreachable, but silences -Wreturn-type
 }
 
 unsigned int RDKit::MacroMol::addMacroAtom(
@@ -40,7 +40,6 @@ unsigned int RDKit::MacroMol::addMacroAtom(
     std::optional<std::string> chainId) {
   auto className = monomerClassToString(monomerClass);
   auto atom = new Atom(0);
-  atom->setAtomicNum(0);
 
   atom->setProp(common_properties::dummyLabel, templateName);
   atom->setProp(common_properties::molAtomClass, className);
@@ -84,8 +83,12 @@ const MacroMolTemplate *RDKit::MacroMol::getTemplate(
     return nullptr;  // ordinary atom, not a macro atom
   }
 
-  auto templatePtr = d_templateLibrary.find(atomClass, dummyLabel);
+  auto templatePtr = d_templateLibrary->find(atomClass, dummyLabel);
   if (templatePtr == nullptr) {
+    // Fall back to the global builtin library.  This is intentional: it is how
+    // hand-built MacroMols (which carry no templates of their own) resolve the
+    // standard builtin monomers.  Templates are keyed by (class, name), so a
+    // local template always takes precedence over a builtin of the same key.
     templatePtr =
         MacroMolTemplateLib::getGlobalLibrary().find(atomClass, dummyLabel);
   }
