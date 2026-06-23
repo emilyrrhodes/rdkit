@@ -25,9 +25,9 @@ TEST_CASE("testBuildMacroMol") {
   // that the MacroMol has the expected number of atoms and bonds, and that the
   // "sequence" of template names in the macro atoms is as expected.
   auto macro_mol = std::make_unique<MacroMol>();
-  auto macro_atom_1 = macro_mol->addMacroAtom("AminoAcid", "A");
-  auto macro_atom_2 = macro_mol->addMacroAtom("AminoAcid", "C");
-  auto macro_atom_3 = macro_mol->addMacroAtom("AminoAcid", "D");
+  auto macro_atom_1 = macro_mol->addMacroAtom(MonomerClass::AA, "A");
+  auto macro_atom_2 = macro_mol->addMacroAtom(MonomerClass::AA, "C");
+  auto macro_atom_3 = macro_mol->addMacroAtom(MonomerClass::AA, "D");
   macro_mol->addMacroBond(macro_atom_1, macro_atom_2, Bond::BondType::SINGLE,
                           "2", "1");
   macro_mol->addMacroBond(macro_atom_2, macro_atom_3, Bond::BondType::SINGLE,
@@ -39,6 +39,7 @@ TEST_CASE("testBuildMacroMol") {
     std::string templateName =
         atom->getProp<std::string>(common_properties::dummyLabel);
     sequence += templateName;
+    CHECK(atom->getProp<std::string>(common_properties::molAtomClass) == "AA");
   }
   CHECK(sequence == "ACD");
 }
@@ -71,9 +72,9 @@ TEST_CASE("testSubstructureSearchWithMacroMols") {
   }
 
   auto simple_macro_mol = std::make_unique<MacroMol>();
-  auto macro_atom_1 = simple_macro_mol->addMacroAtom("AA", "A");
-  auto macro_atom_2 = simple_macro_mol->addMacroAtom("AA", "Y");
-  auto macro_atom_3 = simple_macro_mol->addMacroAtom("AA", "E");
+  auto macro_atom_1 = simple_macro_mol->addMacroAtom(MonomerClass::AA, "A");
+  auto macro_atom_2 = simple_macro_mol->addMacroAtom(MonomerClass::AA, "Y");
+  auto macro_atom_3 = simple_macro_mol->addMacroAtom(MonomerClass::AA, "E");
   simple_macro_mol->addMacroBond(macro_atom_1, macro_atom_2,
                                  Bond::BondType::SINGLE, "2", "1");
   simple_macro_mol->addMacroBond(macro_atom_2, macro_atom_3,
@@ -92,31 +93,31 @@ TEST_CASE("testUniversalAttachmentPointConventions") {
   // matches of each other when the attachment point conventions are not the
   // same, but are when the attachment point conventions are the same.
   auto macro_mol_1 = std::make_unique<MacroMol>();
-  auto mm_1_atom_1 = macro_mol_1->addMacroAtom("AminoAcid", "A");
-  auto mm_1_atom_2 = macro_mol_1->addMacroAtom("AminoAcid", "C");
-  auto mm_1_atom_3 = macro_mol_1->addMacroAtom("AminoAcid", "D");
+  auto mm_1_atom_1 = macro_mol_1->addMacroAtom(MonomerClass::AA, "A");
+  auto mm_1_atom_2 = macro_mol_1->addMacroAtom(MonomerClass::AA, "C");
+  auto mm_1_atom_3 = macro_mol_1->addMacroAtom(MonomerClass::AA, "D");
   macro_mol_1->addMacroBond(mm_1_atom_1, mm_1_atom_2, Bond::BondType::SINGLE,
                             "2", "1");
   macro_mol_1->addMacroBond(mm_1_atom_2, mm_1_atom_3, Bond::BondType::SINGLE,
                             "2", "1");
 
   auto macro_mol_2 = std::make_unique<MacroMol>();
-  auto mm_2_atom_1 = macro_mol_2->addMacroAtom("AminoAcid", "A");
-  auto mm_2_atom_2 = macro_mol_2->addMacroAtom("AminoAcid", "C");
+  auto mm_2_atom_1 = macro_mol_2->addMacroAtom(MonomerClass::AA, "A");
+  auto mm_2_atom_2 = macro_mol_2->addMacroAtom(MonomerClass::AA, "C");
   macro_mol_2->addMacroBond(
       mm_2_atom_1, mm_2_atom_2, Bond::BondType::SINGLE, "2",
       "1");  // NOTE: SAME attachment point convention than macro_mol_1
 
   auto macro_mol_3 = std::make_unique<MacroMol>();
-  auto mm_3_atom_1 = macro_mol_3->addMacroAtom("AminoAcid", "A");
-  auto mm_3_atom_2 = macro_mol_3->addMacroAtom("AminoAcid", "C");
+  auto mm_3_atom_1 = macro_mol_3->addMacroAtom(MonomerClass::AA, "A");
+  auto mm_3_atom_2 = macro_mol_3->addMacroAtom(MonomerClass::AA, "C");
   macro_mol_3->addMacroBond(
       mm_3_atom_1, mm_3_atom_2, Bond::BondType::SINGLE, "2",
       "R1");  // NOTE: DIFFERENT attachment point convention as macro_mol_1
 
   auto macro_mol_4 = std::make_unique<MacroMol>();
-  auto mm_4_atom_1 = macro_mol_4->addMacroAtom("AminoAcid", "A");
-  auto mm_4_atom_2 = macro_mol_4->addMacroAtom("AminoAcid", "C");
+  auto mm_4_atom_1 = macro_mol_4->addMacroAtom(MonomerClass::AA, "A");
+  auto mm_4_atom_2 = macro_mol_4->addMacroAtom(MonomerClass::AA, "C");
   macro_mol_4->addMacroBond(mm_4_atom_1, mm_4_atom_2, Bond::BondType::SINGLE,
                             "2",
                             "3");  // NOTE: DIFFERENT attachment point location
@@ -146,9 +147,9 @@ TEST_CASE("testMacroMolToAtomisticMol") {
   // an atomistic mol, and check that the resulting atomistic mol has the
   // expected number of atoms and bonds.
   auto macro_mol = std::make_unique<MacroMol>();
-  auto macro_atom_1 = macro_mol->addMacroAtom("AminoAcid", "A");
-  auto macro_atom_2 = macro_mol->addMacroAtom("AminoAcid", "C");
-  auto macro_atom_3 = macro_mol->addMacroAtom("AminoAcid", "D");
+  auto macro_atom_1 = macro_mol->addMacroAtom(MonomerClass::AA, "A");
+  auto macro_atom_2 = macro_mol->addMacroAtom(MonomerClass::AA, "C");
+  auto macro_atom_3 = macro_mol->addMacroAtom(MonomerClass::AA, "D");
   macro_mol->addMacroBond(macro_atom_1, macro_atom_2, Bond::BondType::SINGLE,
                           "2", "1");
   macro_mol->addMacroBond(macro_atom_2, macro_atom_3, Bond::BondType::SINGLE,
@@ -178,18 +179,18 @@ TEST_CASE("testMacroMolCanonicalize") {
   // orders of the macro atoms, canonicalize them, and check that the canonical
   // SMILES for the two MacroMols are the same after canonicalization.
   auto macro_mol_1 = std::make_unique<MacroMol>();
-  auto mm_1_atom_1 = macro_mol_1->addMacroAtom("AminoAcid", "A");
-  auto mm_1_atom_2 = macro_mol_1->addMacroAtom("AminoAcid", "C");
-  auto mm_1_atom_3 = macro_mol_1->addMacroAtom("AminoAcid", "D");
+  auto mm_1_atom_1 = macro_mol_1->addMacroAtom(MonomerClass::AA, "A");
+  auto mm_1_atom_2 = macro_mol_1->addMacroAtom(MonomerClass::AA, "C");
+  auto mm_1_atom_3 = macro_mol_1->addMacroAtom(MonomerClass::AA, "D");
   macro_mol_1->addMacroBond(mm_1_atom_1, mm_1_atom_2, Bond::BondType::SINGLE,
                             "2", "1");
   macro_mol_1->addMacroBond(mm_1_atom_2, mm_1_atom_3, Bond::BondType::SINGLE,
                             "2", "1");
 
   auto macro_mol_2 = std::make_unique<MacroMol>();
-  auto mm_2_atom_1 = macro_mol_2->addMacroAtom("AminoAcid", "C");
-  auto mm_2_atom_2 = macro_mol_2->addMacroAtom("AminoAcid", "D");
-  auto mm_2_atom_3 = macro_mol_2->addMacroAtom("AminoAcid", "A");
+  auto mm_2_atom_1 = macro_mol_2->addMacroAtom(MonomerClass::AA, "C");
+  auto mm_2_atom_2 = macro_mol_2->addMacroAtom(MonomerClass::AA, "D");
+  auto mm_2_atom_3 = macro_mol_2->addMacroAtom(MonomerClass::AA, "A");
   macro_mol_2->addMacroBond(mm_2_atom_3, mm_2_atom_1, Bond::BondType::SINGLE,
                             "2", "1");
   macro_mol_2->addMacroBond(mm_2_atom_1, mm_2_atom_2, Bond::BondType::SINGLE,

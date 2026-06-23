@@ -19,6 +19,7 @@
 #include <GraphMol/RWMol.h>
 #include <GraphMol/Atom.h>
 #include <GraphMol/SubstanceGroup.h>
+#include <GraphMol/MacroMol.h>
 #include <GraphMol/MacroMolTemplate.h>
 #include <GraphMol/SmilesParse/SmilesParse.h>
 
@@ -160,7 +161,7 @@ std::unique_ptr<MacroMolTemplate> buildAminoAcidTemplate(
   // main SUP sgroup: core atoms + an attachment point per leaving atom
   {
     SubstanceGroup sg(m, "SUP");
-    sg.setProp<std::string>("CLASS", "AminoAcid");
+    sg.setProp<std::string>("CLASS", monomerClassToString(MonomerClass::AA));
     sg.setAtoms(coreAtoms);
     for (const auto &lv : leavings) {
       sg.addAttachPoint(lv.aIdx, static_cast<int>(lv.lvIdx), lv.id);
@@ -178,7 +179,7 @@ std::unique_ptr<MacroMolTemplate> buildAminoAcidTemplate(
 
   std::unique_ptr<RWMol> up(m);
   return std::make_unique<MacroMolTemplate>(
-      up, std::string("AminoAcid"), symbol,
+      up, monomerClassToString(MonomerClass::AA), symbol,
       std::vector<std::pair<std::string, std::string>>{});
 }
 

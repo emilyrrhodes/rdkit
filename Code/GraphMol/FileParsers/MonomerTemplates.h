@@ -26,7 +26,7 @@ class MacroMolTemplateLib;
     Each map-numbered atom in \c smiles is treated as a single-atom leaving
     group; the map number is its connection label and its single non-mapped
     neighbor is the attachment atom.  The returned template carries a main
-    "SUP"/CLASS="AminoAcid" sgroup over the core atoms (with one attachment
+    "SUP"/CLASS="AA" sgroup over the core atoms (with one attachment
     point per leaving atom) and one "SUP"/CLASS="LGRP" sgroup per leaving atom.
 */
 RDKIT_FILEPARSERS_EXPORT std::unique_ptr<MacroMolTemplate> buildAminoAcidTemplate(

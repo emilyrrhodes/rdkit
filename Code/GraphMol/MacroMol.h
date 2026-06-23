@@ -14,8 +14,14 @@
 #include "MacroMolTemplate.h"
 
 #include <optional>
+#include <string>
 
 namespace RDKit {
+
+enum class MonomerClass { AA, NA, CHEM, OTHER };
+
+RDKIT_GRAPHMOL_EXPORT std::string monomerClassToString(
+    MonomerClass monomerClass);
 
 class RDKIT_GRAPHMOL_EXPORT MacroMol : public RWMol {
  private:
@@ -47,7 +53,7 @@ class RDKIT_GRAPHMOL_EXPORT MacroMol : public RWMol {
   }
 
   unsigned int addMacroAtom(
-      std::string className, std::string templateName,
+      MonomerClass monomerClass, std::string templateName,
       std::optional<unsigned int> residueNumber = std::nullopt,
       std::optional<std::string> chainId = std::nullopt);
 

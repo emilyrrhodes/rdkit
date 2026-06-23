@@ -20,10 +20,25 @@
 
 namespace RDKit {
 
+std::string monomerClassToString(MonomerClass monomerClass) {
+  switch (monomerClass) {
+    case MonomerClass::AA:
+      return "AA";
+    case MonomerClass::NA:
+      return "NA";
+    case MonomerClass::CHEM:
+      return "CHEM";
+    case MonomerClass::OTHER:
+      return "OTHER";
+  }
+  return "OTHER";
+}
+
 unsigned int RDKit::MacroMol::addMacroAtom(
-    std::string className, std::string templateName,
+    MonomerClass monomerClass, std::string templateName,
     std::optional<unsigned int> residueNumber,
     std::optional<std::string> chainId) {
+  auto className = monomerClassToString(monomerClass);
   auto atom = new Atom(0);
   atom->setAtomicNum(0);
 
