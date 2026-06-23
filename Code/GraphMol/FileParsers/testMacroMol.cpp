@@ -87,11 +87,10 @@ TEST_CASE("testSubstructureSearchWithMacroMols") {
   CHECK(match);
 }
 
-TEST_CASE("testUniversalAttachmentPointConventions") {
-  // Build two MacroMols with the same template atoms and bonds, but different
-  // attachment point conventions, and check that they are not substructure
-  // matches of each other when the attachment point conventions are not the
-  // same, but are when the attachment point conventions are the same.
+TEST_CASE("testMacroMolSubstructureMatching") {
+  // Build MacroMols with the same number of atoms and bonds, but different
+  // attachment points, template names, and monomer classes, and check that
+  // substructure searches behave as expected.
   auto macro_mol_1 = std::make_unique<MacroMol>();
   auto mm_1_atom_1 = macro_mol_1->addMacroAtom(MonomerClass::AA, "A");
   auto mm_1_atom_2 = macro_mol_1->addMacroAtom(MonomerClass::AA, "C");
@@ -115,18 +114,44 @@ TEST_CASE("testUniversalAttachmentPointConventions") {
       mm_3_atom_1, mm_3_atom_2, Bond::BondType::SINGLE, 2,
       3);  // NOTE: DIFFERENT attachment point location as macro_mol_1
 
+  auto macro_mol_4 = std::make_unique<MacroMol>();
+  auto mm_4_atom_1 = macro_mol_4->addMacroAtom(MonomerClass::AA, "G");
+  // NOTE: DIFFERENT template name compared to macro_mol_1
+  auto mm_4_atom_2 = macro_mol_4->addMacroAtom(MonomerClass::AA, "C");
+  macro_mol_4->addMacroBond(mm_4_atom_1, mm_4_atom_2, Bond::BondType::SINGLE, 2,
+                            1);
+
+  auto macro_mol_5 = std::make_unique<MacroMol>();
+  auto mm_5_atom_1 = macro_mol_5->addMacroAtom(MonomerClass::NA, "A");
+  // NOTE: DIFFERENT monomer class compared to macro_mol_1
+  auto mm_5_atom_2 = macro_mol_5->addMacroAtom(MonomerClass::AA, "C");
+  macro_mol_5->addMacroBond(mm_5_atom_1, mm_5_atom_2, Bond::BondType::SINGLE, 2,
+                            1);
+
   RDKit::GeneralizedSubstruct::ExtendedQueryMol query_2(
       std::make_unique<RWMol>(*macro_mol_2));
-  auto match_1_2 =
-      RDKit::GeneralizedSubstruct::hasSubstructMatch(*macro_mol_1, query_2);
+  auto match_1_2 = RDKit::GeneralizedSubstruct::hasSubstructMatch(
+      *macro_mol_1, query_2);
   CHECK(match_1_2);
   RDKit::GeneralizedSubstruct::ExtendedQueryMol query_3(
       std::make_unique<RWMol>(*macro_mol_3));
-  auto match_1_3 =
-      RDKit::GeneralizedSubstruct::hasSubstructMatch(*macro_mol_1, query_3);
+  auto match_1_3 = RDKit::GeneralizedSubstruct::hasSubstructMatch(
+      *macro_mol_1, query_3);
   CHECK(
-      match_1_3);  // This should fail because a change in the attachment point
-                   // location should be considered a change chemical structure
+      !match_1_3);  // This should fail because a change in the attachment point
+                    // location should be considered a change chemical structure
+  RDKit::GeneralizedSubstruct::ExtendedQueryMol query_4(
+      std::make_unique<RWMol>(*macro_mol_4));
+  auto match_1_4 = RDKit::GeneralizedSubstruct::hasSubstructMatch(
+      *macro_mol_1, query_4);
+  CHECK(!match_1_4);  // This should fail because a change in the template name
+                      // should be considered a change chemical structure
+  RDKit::GeneralizedSubstruct::ExtendedQueryMol query_5(
+      std::make_unique<RWMol>(*macro_mol_5));
+  auto match_1_5 = RDKit::GeneralizedSubstruct::hasSubstructMatch(
+      *macro_mol_1, query_5);
+  CHECK(!match_1_5);  // This should fail because a change in the monomer class
+                      // should be considered a change chemical structure
 }
 
 TEST_CASE("testMacroMolToAtomisticMol") {
