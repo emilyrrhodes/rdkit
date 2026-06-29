@@ -29,6 +29,7 @@ endif()
 rdkit_library(FileParsers
     CDXMLParser.cpp
     Mol2FileParser.cpp MolFileParser.cpp
+    MolToMacroMol.cpp
     SCSRMolFileParser.cpp
     MolSGroupParsing.cpp MolSGroupWriting.cpp
     MolFileStereochem.cpp MolFileWriter.cpp
@@ -58,6 +59,7 @@ rdkit_headers(CDXMLParser.h
     FileParsers.h
     FileParserUtils.h
     MolFileStereochem.h
+    MolToMacroMol.h
     FileWriters.h
     MolSupplier.h MolSupplier.v1API.h
     MolWriters.h
@@ -106,6 +108,10 @@ rdkit_catch_test(fileParsersCatchTest file_parsers_catch.cpp
 rdkit_catch_test(macromolsCatchTest macromols_catch.cpp
     LINK_LIBRARIES FileParsers)
 
+
+rdkit_catch_test(testMolToMacroMol testMolToMacroMol.cpp
+    LINK_LIBRARIES FileParsers)
+
 rdkit_catch_test(testPropertyLists testPropertyLists.cpp
     LINK_LIBRARIES FileParsers)
 
@@ -144,4 +150,3 @@ if(RDK_TEST_MULTITHREADED AND RDK_BUILD_THREADSAFE_SSS)
 rdkit_catch_test(multithreadedSupplierCatchTest multithreaded_supplier_catch.cpp
     LINK_LIBRARIES FileParsers)
 endif()
-
