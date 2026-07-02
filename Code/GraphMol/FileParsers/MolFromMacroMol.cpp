@@ -20,12 +20,11 @@
 #include <memory>
 #include <set>
 #include <string>
-#include <string_view>
 
 namespace RDKit {
 namespace {
 
-struct MacroAtomInfo {
+struct MacroAtomDetails {
   std::string monomerClass;
   std::string label;
 };
@@ -41,17 +40,22 @@ struct BuildState {
   std::map<unsigned int, ExpandedMacroAtom> macroAtoms;
 };
 
-bool getMacroAtomInfo(const Atom &atom, MacroAtomInfo &info) {
+bool getMacroAtomDetails(const Atom &atom, MacroAtomDetails &info) {
+  if (const auto *macroInfo = atom.getMacroAtomInfo()) {
+    info.monomerClass = macroInfo->getMonomerClass();
+    info.label = macroInfo->getSymbol();
+    if (!info.monomerClass.empty() && !info.label.empty()) {
+      return true;
+    }
+  }
+
   return atom.getPropIfPresent(common_properties::molAtomClass,
                                info.monomerClass) &&
          atom.getPropIfPresent(common_properties::dummyLabel, info.label) &&
          !info.monomerClass.empty() && !info.label.empty();
 }
 
-std::string getAttachPointId(const Bond &bond,
-                             const std::string_view attachPointProp) {
-  int attachPoint = -1;
-  bond.getPropIfPresent(attachPointProp, attachPoint);
+std::string getAttachPointId(int attachPoint) {
   if (attachPoint < 0) {
     return "";
   }
@@ -59,7 +63,7 @@ std::string getAttachPointId(const Bond &bond,
 }
 
 const MacroMolTemplate *findTemplate(
-    const MacroMolTemplateLibrary &templates, const MacroAtomInfo &info) {
+    const MacroMolTemplateLibrary &templates, const MacroAtomDetails &info) {
   std::shared_ptr<MacroMolEntry> entry =
       templates.getBySymbol(info.monomerClass, info.label);
   if (!entry) {
@@ -69,15 +73,20 @@ const MacroMolTemplate *findTemplate(
 }
 
 void addBondCopy(RWMol &result, const Bond &oldBond,
-                 unsigned int beginAtomIdx, unsigned int endAtomIdx) {
-  auto *newBond = new Bond(oldBond.getBondType());
+                 unsigned int beginAtomIdx, unsigned int endAtomIdx,
+                 Bond::BondType bondType) {
+  auto *newBond = new Bond(bondType);
   newBond->setBeginAtomIdx(beginAtomIdx);
   newBond->setEndAtomIdx(endAtomIdx);
   newBond->setBondDir(oldBond.getBondDir());
   newBond->updateProps(oldBond, false);
-  newBond->clearProp(common_properties::_MacroMolBeginAttachPt);
-  newBond->clearProp(common_properties::_MacroMolEndAttachPt);
   result.addBond(newBond, true);
+}
+
+void addBondCopy(RWMol &result, const Bond &oldBond,
+                 unsigned int beginAtomIdx, unsigned int endAtomIdx) {
+  addBondCopy(result, oldBond, beginAtomIdx, endAtomIdx,
+              oldBond.getBondType());
 }
 
 void copyRegularAtom(BuildState &state, const Atom &atom) {
@@ -93,22 +102,27 @@ std::set<unsigned int> findLeavingAtomsToSkip(const MacroMol &macroMol,
   const auto *mainSgroup = templ.getMainSgroup();
 
   for (const auto *macroBond : macroMol.bonds()) {
-    std::string attachPointId;
-    if (macroBond->getBeginAtomIdx() == macroAtom.getIdx()) {
-      attachPointId = getAttachPointId(
-          *macroBond, common_properties::_MacroMolBeginAttachPt);
-    } else if (macroBond->getEndAtomIdx() == macroAtom.getIdx()) {
-      attachPointId =
-          getAttachPointId(*macroBond, common_properties::_MacroMolEndAttachPt);
-    }
-
-    if (attachPointId.empty()) {
+    const auto *macroBondInfo = macroBond->getMacroBondInfo();
+    if (!macroBondInfo) {
       continue;
     }
 
-    for (const auto &attachPoint : mainSgroup->getAttachPoints()) {
-      if (attachPoint.id == attachPointId && attachPoint.lvIdx >= 0) {
-        atomsToSkip.insert(static_cast<unsigned int>(attachPoint.lvIdx));
+    for (const auto &bondInfo : macroBondInfo->getBonds()) {
+      std::string attachPointId;
+      if (macroBond->getBeginAtomIdx() == macroAtom.getIdx()) {
+        attachPointId = getAttachPointId(bondInfo.beginAttachPt);
+      } else if (macroBond->getEndAtomIdx() == macroAtom.getIdx()) {
+        attachPointId = getAttachPointId(bondInfo.endAttachPt);
+      }
+
+      if (attachPointId.empty()) {
+        continue;
+      }
+
+      for (const auto &attachPoint : mainSgroup->getAttachPoints()) {
+        if (attachPoint.id == attachPointId && attachPoint.lvIdx >= 0) {
+          atomsToSkip.insert(static_cast<unsigned int>(attachPoint.lvIdx));
+        }
       }
     }
   }
@@ -155,7 +169,7 @@ void copyTemplateBonds(BuildState &state, const ExpandedMacroAtom &expanded,
 
 void copyMacroAtom(BuildState &state, const MacroMol &macroMol,
                    const MacroMolTemplateLibrary &templates, const Atom &atom,
-                   const MacroAtomInfo &info) {
+                   const MacroAtomDetails &info) {
   const auto *templ = findTemplate(templates, info);
   if (!templ || !templ->getMainSgroup()) {
     throw FileParseException("No template found for macro atom " +
@@ -175,8 +189,8 @@ void copyMacroAtom(BuildState &state, const MacroMol &macroMol,
 void copyAtoms(BuildState &state, const MacroMol &macroMol,
                const MacroMolTemplateLibrary &templates) {
   for (const auto *atom : macroMol.atoms()) {
-    MacroAtomInfo info;
-    if (getMacroAtomInfo(*atom, info)) {
+    MacroAtomDetails info;
+    if (getMacroAtomDetails(*atom, info)) {
       copyMacroAtom(state, macroMol, templates, *atom, info);
     } else {
       copyRegularAtom(state, *atom);
@@ -186,8 +200,8 @@ void copyAtoms(BuildState &state, const MacroMol &macroMol,
 
 unsigned int getResultAtomForBond(const BuildState &state, const Atom &atom,
                                   const std::string &attachPointId) {
-  MacroAtomInfo info;
-  if (!getMacroAtomInfo(atom, info)) {
+  MacroAtomDetails info;
+  if (!getMacroAtomDetails(atom, info)) {
     return state.atomToResultAtom.at(atom.getIdx());
   }
 
@@ -203,13 +217,25 @@ unsigned int getResultAtomForBond(const BuildState &state, const Atom &atom,
 
 void copyMacroMolBonds(BuildState &state, const MacroMol &macroMol) {
   for (const auto *oldBond : macroMol.bonds()) {
-    const auto beginAtomIdx = getResultAtomForBond(
-        state, *oldBond->getBeginAtom(),
-        getAttachPointId(*oldBond, common_properties::_MacroMolBeginAttachPt));
-    const auto endAtomIdx = getResultAtomForBond(
-        state, *oldBond->getEndAtom(),
-        getAttachPointId(*oldBond, common_properties::_MacroMolEndAttachPt));
-    addBondCopy(state.result, *oldBond, beginAtomIdx, endAtomIdx);
+    const auto *macroBondInfo = oldBond->getMacroBondInfo();
+    if (!macroBondInfo) {
+      const auto beginAtomIdx =
+          getResultAtomForBond(state, *oldBond->getBeginAtom(), "");
+      const auto endAtomIdx =
+          getResultAtomForBond(state, *oldBond->getEndAtom(), "");
+      addBondCopy(state.result, *oldBond, beginAtomIdx, endAtomIdx);
+      continue;
+    }
+
+    for (const auto &bondInfo : macroBondInfo->getBonds()) {
+      const auto beginAtomIdx = getResultAtomForBond(
+          state, *oldBond->getBeginAtom(),
+          getAttachPointId(bondInfo.beginAttachPt));
+      const auto endAtomIdx = getResultAtomForBond(
+          state, *oldBond->getEndAtom(), getAttachPointId(bondInfo.endAttachPt));
+      addBondCopy(state.result, *oldBond, beginAtomIdx, endAtomIdx,
+                  static_cast<Bond::BondType>(bondInfo.bondType));
+    }
   }
 }
 
@@ -218,7 +244,7 @@ void copyMacroMolBonds(BuildState &state, const MacroMol &macroMol) {
 std::unique_ptr<RWMol> MolFromMacroMol(
     const MacroMol &macroMol, const MacroMolTemplateLibrary &templates) {
   auto result = std::make_unique<RWMol>();
-  BuildState state{*result};
+  BuildState state{*result, {}, {}};
 
   copyAtoms(state, macroMol, templates);
   copyMacroMolBonds(state, macroMol);
