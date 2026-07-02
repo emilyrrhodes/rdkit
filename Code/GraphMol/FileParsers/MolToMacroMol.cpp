@@ -8,6 +8,7 @@
 //  of the RDKit source tree.
 //
 
+#define USE_BETTER_ENUMS
 #include <GraphMol/FileParsers/MolToMacroMol.h>
 #include <GraphMol/Atom.h>
 #include <GraphMol/Bond.h>
@@ -87,6 +88,13 @@ int parseAttachPointId(const std::string &attachPointId) {
     throw FileParseException("non-numeric macro attachment point id: " +
                              attachPointId);
   }
+}
+
+MonomerClass stringToMonomerClass(const std::string &monomerClass) {
+  if (MonomerClass::_is_valid(monomerClass.c_str())) {
+    return MonomerClass::_from_string(monomerClass.c_str());
+  }
+  return MonomerClass::OTHER;
 }
 
 std::unique_ptr<RWMol> makeMainGroupQuery(const MacroMolTemplate &templ,
