@@ -87,8 +87,10 @@ TEST_CASE("MolToMacroMol minimal converter", "[MolToMacroMol]") {
     REQUIRE(macroMol);
     CHECK(macroMol->getNumAtoms() == 1);
     CHECK(macroMol->getNumBonds() == 0);
-    CHECK(macroMol->getAtomWithIdx(0)->getProp<std::string>(
-              common_properties::dummyLabel) == "L");
+    const auto *macroInfo = macroMol->getAtomWithIdx(0)->getMacroAtomInfo();
+    REQUIRE(macroInfo);
+    CHECK(macroInfo->getSymbol() == "L");
+    CHECK(macroInfo->getMonomerClass() == "AA");
   }
 
   SECTION("equal-size templates preserve insertion order") {
@@ -108,8 +110,10 @@ TEST_CASE("MolToMacroMol minimal converter", "[MolToMacroMol]") {
 
     REQUIRE(macroMol);
     REQUIRE(macroMol->getNumAtoms() == 1);
-    CHECK(macroMol->getAtomWithIdx(0)->getProp<std::string>(
-              common_properties::dummyLabel) == "F");
+    const auto *macroInfo = macroMol->getAtomWithIdx(0)->getMacroAtomInfo();
+    REQUIRE(macroInfo);
+    CHECK(macroInfo->getSymbol() == "F");
+    CHECK(macroInfo->getMonomerClass() == "AA");
   }
 
   SECTION("single hit creates a macro atom and copies unmatched atoms") {
@@ -125,14 +129,13 @@ TEST_CASE("MolToMacroMol minimal converter", "[MolToMacroMol]") {
     CHECK(macroMol->getNumBonds() == 1);
 
     const auto *macroAtom = macroMol->getAtomWithIdx(0);
-    CHECK(macroAtom->hasProp(common_properties::isMacroAtom));
-    CHECK(macroAtom->getProp<std::string>(common_properties::dummyLabel) ==
-          "Et");
-    CHECK(macroAtom->getProp<std::string>(common_properties::molAtomClass) ==
-          "AA");
+    const auto *macroInfo = macroAtom->getMacroAtomInfo();
+    REQUIRE(macroInfo);
+    CHECK(macroInfo->getSymbol() == "Et");
+    CHECK(macroInfo->getMonomerClass() == "AA");
 
     const auto *copiedAtom = macroMol->getAtomWithIdx(1);
-    CHECK(!copiedAtom->hasProp(common_properties::isMacroAtom));
+    CHECK(copiedAtom->getMacroAtomInfo() == nullptr);
     CHECK(copiedAtom->getAtomicNum() == 6);
   }
 
