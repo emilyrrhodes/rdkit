@@ -152,8 +152,13 @@ TEST_CASE("MolToMacroMol minimal converter", "[MolToMacroMol]") {
     REQUIRE(macroMol->getNumBonds() == 1);
 
     const auto *bond = macroMol->getBondWithIdx(0);
-    CHECK(bond->getProp<int>(common_properties::_MacroMolBeginAttachPt) == 2);
-    CHECK(bond->getProp<int>(common_properties::_MacroMolEndAttachPt) == 1);
+    const auto *bondInfo = bond->getMacroBondInfo();
+    REQUIRE(bondInfo);
+    REQUIRE(bondInfo->getNumBonds() == 1);
+    CHECK(bondInfo->getBond(0).beginAttachPt == 2);
+    CHECK(bondInfo->getBond(0).endAttachPt == 1);
+    CHECK(bondInfo->getBond(0).bondType ==
+          static_cast<unsigned int>(Bond::BondType::SINGLE));
   }
 
   SECTION("entries without usable templates are skipped") {
