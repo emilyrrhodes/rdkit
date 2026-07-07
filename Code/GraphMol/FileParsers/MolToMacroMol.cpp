@@ -8,7 +8,6 @@
 //  of the RDKit source tree.
 //
 
-#define USE_BETTER_ENUMS
 #include <GraphMol/FileParsers/MolToMacroMol.h>
 #include <GraphMol/Atom.h>
 #include <GraphMol/Bond.h>
@@ -22,6 +21,8 @@
 #include <RDGeneral/Invariant.h>
 
 #include <algorithm>
+#include <array>
+#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
@@ -78,6 +79,13 @@ struct AcceptedMatch {
   std::map<DirectedBond, int> attachPoints;
 };
 
+const std::array<std::pair<const char *, MonomerClass>, 4> monomerClasses = {{
+    {"AA", MonomerClass::AA},
+    {"NA", MonomerClass::NA},
+    {"CHEM", MonomerClass::CHEM},
+    {"OTHER", MonomerClass::OTHER},
+}};
+
 int parseAttachPointId(const std::string &attachPointId) {
   if (attachPointId.empty()) {
     throw FileParseException("empty macro attachment point id");
@@ -91,8 +99,10 @@ int parseAttachPointId(const std::string &attachPointId) {
 }
 
 MonomerClass stringToMonomerClass(const std::string &monomerClass) {
-  if (MonomerClass::_is_valid(monomerClass.c_str())) {
-    return MonomerClass::_from_string(monomerClass.c_str());
+  for (const auto &[name, value] : monomerClasses) {
+    if (monomerClass == name) {
+      return value;
+    }
   }
   return MonomerClass::OTHER;
 }
