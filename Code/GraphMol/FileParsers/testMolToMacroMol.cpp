@@ -8,6 +8,7 @@
 //  of the RDKit source tree.
 //
 
+#include <GraphMol/MacroMol.h>
 #include <GraphMol/FileParsers/MolToMacroMol.h>
 #include <GraphMol/MacroMolTemplate.h>
 #include <GraphMol/RDKitBase.h>
@@ -77,7 +78,7 @@ TEST_CASE("MolToMacroMol minimal converter", "[MolToMacroMol]") {
     const auto *macroInfo = macroMol->getAtomWithIdx(0)->getMacroAtomInfo();
     REQUIRE(macroInfo);
     CHECK(macroInfo->getSymbol() == "L");
-    CHECK(macroInfo->getMonomerClass() == "OTHER");
+    CHECK(macroInfo->getMonomerClass() == MonomerClass::OTHER);
   }
 
   SECTION("equal-size templates preserve insertion order") {
@@ -100,7 +101,7 @@ TEST_CASE("MolToMacroMol minimal converter", "[MolToMacroMol]") {
     const auto *macroInfo = macroMol->getAtomWithIdx(0)->getMacroAtomInfo();
     REQUIRE(macroInfo);
     CHECK(macroInfo->getSymbol() == "F");
-    CHECK(macroInfo->getMonomerClass() == "OTHER");
+    CHECK(macroInfo->getMonomerClass() == MonomerClass::OTHER);
   }
 
   SECTION("single hit creates a macro atom and copies unmatched atoms") {
@@ -119,7 +120,7 @@ TEST_CASE("MolToMacroMol minimal converter", "[MolToMacroMol]") {
     const auto *macroInfo = macroAtom->getMacroAtomInfo();
     REQUIRE(macroInfo);
     CHECK(macroInfo->getSymbol() == "Et");
-    CHECK(macroInfo->getMonomerClass() == "OTHER");
+    CHECK(macroInfo->getMonomerClass() == MonomerClass::OTHER);
 
     const auto *copiedAtom = macroMol->getAtomWithIdx(1);
     CHECK(copiedAtom->getMacroAtomInfo() == nullptr);

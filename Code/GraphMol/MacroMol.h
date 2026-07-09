@@ -20,31 +20,6 @@
 
 namespace RDKit {
 
-//! Classes of monomer that a macro atom can represent.
-/*!
-  Supported monomer classes for macro atoms.
-
-  A regular enum is used here because MonomerClass appears in public MacroMol
-  method signatures. RDKit's BETTER_ENUM macro can expand to different C++
-  types depending on per-source-file preprocessor settings, which can cause
-  link errors in shared-library and unity builds. String conversion tables are
-  kept in MacroMol.cpp so the public header stays stable.
-*/
-enum MonomerClass : int {
-  AA,
-  NA,
-  CHEM,
-  OTHER
-};
-
-//! Converts a macro atom monomer class enum value to its recognized name.
-RDKIT_GRAPHMOL_EXPORT const char *monomerClassToString(
-    MonomerClass monomerClass);
-
-//! Converts a recognized macro atom monomer class name to its enum value.
-RDKIT_GRAPHMOL_EXPORT MonomerClass
-monomerClassFromString(const std::string &monomerClass);
-
 class RDKIT_GRAPHMOL_EXPORT MacroMol : public RWMol {
  public:
   //! Constructs a MacroMol with an empty local template library.
