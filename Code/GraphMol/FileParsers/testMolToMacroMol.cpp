@@ -46,7 +46,7 @@ std::shared_ptr<MacroMolEntry> makeMacroMolEntry(
   }
 
   auto entry = std::make_shared<MacroMolEntry>();
-  entry->monomerClass = "OTHER";
+  entry->monomerClass = MonomerClass::OTHER;
   entry->templateName = templateName;
   entry->symbol = symbol;
   entry->molTemplate = macroTemplate;
@@ -206,13 +206,13 @@ TEST_CASE("MolToMacroMol minimal converter", "[MolToMacroMol]") {
     MacroMolTemplateLibrary templates;
 
     auto nullTemplate = std::make_shared<MacroMolEntry>();
-    nullTemplate->monomerClass = "AA";
+    nullTemplate->monomerClass = MonomerClass::AA;
     nullTemplate->templateName = "NULL";
     nullTemplate->symbol = "N";
     templates.addEntry(nullTemplate);
 
     auto noMainSgroup = std::make_shared<MacroMolEntry>();
-    noMainSgroup->monomerClass = "AA";
+    noMainSgroup->monomerClass = MonomerClass::AA;
     noMainSgroup->templateName = "NO_MAIN";
     noMainSgroup->symbol = "M";
     noMainSgroup->molTemplate = std::make_shared<MacroMolTemplate>();

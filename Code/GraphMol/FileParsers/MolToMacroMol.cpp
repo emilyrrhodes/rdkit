@@ -263,8 +263,7 @@ std::optional<AtomSpec> buildAtomSpecForMatch(
 
 void recordAcceptedAtomSpec(const MacroMolEntry &entry, AtomSpec atomSpec,
                             MacroMolSpec &macroMolSpec) {
-  atomSpec.macroAtom =
-      MacroAtomSpec{monomerClassFromString(entry.monomerClass), entry.symbol};
+  atomSpec.macroAtom = MacroAtomSpec{entry.monomerClass, entry.symbol};
   macroMolSpec.addAtom(std::move(atomSpec));
 }
 
