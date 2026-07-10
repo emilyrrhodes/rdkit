@@ -56,7 +56,7 @@ void addMacroMolTemplateEntry(
     MacroMolTemplateLibrary &templates, const char *templateName,
     const char *symbol, const std::shared_ptr<MacroMolTemplate> &macroTemplate) {
   auto entry = std::make_shared<MacroMolEntry>();
-  entry->monomerClass = "AA";
+  entry->monomerClass = MonomerClass::AA;
   entry->templateName = templateName;
   entry->symbol = symbol;
   entry->molTemplate = macroTemplate;

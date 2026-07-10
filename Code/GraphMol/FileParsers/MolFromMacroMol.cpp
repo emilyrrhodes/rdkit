@@ -25,7 +25,7 @@ namespace RDKit {
 namespace {
 
 struct MacroAtomDetails {
-  std::string monomerClass;
+  MonomerClass monomerClass = MonomerClass::OTHER;
   std::string label;
 };
 
@@ -41,18 +41,13 @@ struct BuildState {
 };
 
 bool getMacroAtomDetails(const Atom &atom, MacroAtomDetails &info) {
-  if (const auto *macroInfo = atom.getMacroAtomInfo()) {
-    info.monomerClass = macroInfo->getMonomerClass();
-    info.label = macroInfo->getSymbol();
-    if (!info.monomerClass.empty() && !info.label.empty()) {
-      return true;
-    }
+  const auto *macroInfo = atom.getMacroAtomInfo();
+  if (!macroInfo) {
+    return false;
   }
-
-  return atom.getPropIfPresent(common_properties::molAtomClass,
-                               info.monomerClass) &&
-         atom.getPropIfPresent(common_properties::dummyLabel, info.label) &&
-         !info.monomerClass.empty() && !info.label.empty();
+  info.monomerClass = macroInfo->getMonomerClass();
+  info.label = macroInfo->getSymbol();
+  return !info.label.empty();
 }
 
 std::string getAttachPointId(int attachPoint) {
