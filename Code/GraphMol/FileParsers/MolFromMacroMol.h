@@ -19,6 +19,15 @@
 
 namespace RDKit {
 
+RDKIT_FILEPARSERS_EXPORT MacroMolTemplateLibrary &
+getGlobalMacroMolTemplateLibrary();
+
+RDKIT_FILEPARSERS_EXPORT void addBuiltinMacroMolTemplates(
+    MacroMolTemplateLibrary &templates);
+
+RDKIT_FILEPARSERS_EXPORT std::unique_ptr<RWMol> MolFromMacroMol(
+    const MacroMol &macroMol);
+
 RDKIT_FILEPARSERS_EXPORT std::unique_ptr<RWMol> MolFromMacroMol(
     const MacroMol &macroMol, const MacroMolTemplateLibrary &templates);
 
