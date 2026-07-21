@@ -34,7 +34,7 @@ std::shared_ptr<MacroMolTemplate> makeAlanineTemplate() {
   auto alanine = std::unique_ptr<RWMol>(
       SmilesToMol("C[C@H](N[H:1])C(=O)[OH:2]", params));
   auto alanineTemplate = std::make_shared<MacroMolTemplate>(*alanine);
-  alanineTemplate->setMainGroup({0, 1, 2, 4, 5}, "AA");
+  alanineTemplate->setMainGroup({0, 1, 2, 4, 5}, MonomerClass::AA);
   alanineTemplate->addLeavingGroup({3}, 2, 3, 1);
   alanineTemplate->addLeavingGroup({6}, 4, 6, 2);
   return alanineTemplate;
@@ -46,7 +46,7 @@ std::shared_ptr<MacroMolTemplate> makeGlycineTemplate() {
   auto glycine =
       std::unique_ptr<RWMol>(SmilesToMol("O=C(CN[H:1])[OH:2]", params));
   auto glycineTemplate = std::make_shared<MacroMolTemplate>(*glycine);
-  glycineTemplate->setMainGroup({0, 1, 2, 3}, "AA");
+  glycineTemplate->setMainGroup({0, 1, 2, 3}, MonomerClass::AA);
   glycineTemplate->addLeavingGroup({4}, 3, 4, 1);
   glycineTemplate->addLeavingGroup({5}, 1, 5, 2);
   return glycineTemplate;

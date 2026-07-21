@@ -136,7 +136,8 @@ void rememberTemplateAttachPoints(ExpandedMacroAtom &expanded,
 void copyTemplateAtoms(BuildState &state, ExpandedMacroAtom &expanded,
                        const MacroMolTemplate &templ,
                        const std::set<unsigned int> &atomsToSkip) {
-  for (const auto *oldAtom : templ.atoms()) {
+  const auto templMol = templ.getMol();
+  for (const auto *oldAtom : templMol.atoms()) {
     if (atomsToSkip.find(oldAtom->getIdx()) != atomsToSkip.end()) {
       continue;
     }
@@ -149,7 +150,8 @@ void copyTemplateAtoms(BuildState &state, ExpandedMacroAtom &expanded,
 
 void copyTemplateBonds(BuildState &state, const ExpandedMacroAtom &expanded,
                        const MacroMolTemplate &templ) {
-  for (const auto *oldBond : templ.bonds()) {
+  const auto templMol = templ.getMol();
+  for (const auto *oldBond : templMol.bonds()) {
     const auto beginAtom =
         expanded.templateToResultAtom.find(oldBond->getBeginAtomIdx());
     const auto endAtom =
