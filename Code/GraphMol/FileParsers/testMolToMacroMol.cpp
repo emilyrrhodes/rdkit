@@ -38,7 +38,7 @@ std::shared_ptr<MacroMolEntry> makeMacroMolEntry(
   auto parsed = std::unique_ptr<RWMol>(SmilesToMol(smiles));
 
   auto macroTemplate = std::make_shared<MacroMolTemplate>(*parsed);
-  macroTemplate->setMainGroup(mainAtoms, "OTHER");
+  macroTemplate->setMainGroup(mainAtoms, MonomerClass::OTHER);
   for (const auto &leavingGroup : leavingGroups) {
     macroTemplate->addLeavingGroup(
         leavingGroup.atoms, leavingGroup.attachAtomIdx,
@@ -331,7 +331,7 @@ TEST_CASE("MolToMacroMol minimal converter", "[MolToMacroMol]") {
   SECTION("addLeavingGroup rejects an attachment atom outside the main group") {
     auto parsed = std::unique_ptr<RWMol>(SmilesToMol("CCO"));
     MacroMolTemplate templ(*parsed);
-    templ.setMainGroup({0, 1}, "OTHER");
+    templ.setMainGroup({0, 1}, MonomerClass::OTHER);
     // Atom 2 is not part of the main group {0, 1}.
     CHECK_THROWS(templ.addLeavingGroup({2}, 2, 2, 1));
   }

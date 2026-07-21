@@ -117,7 +117,7 @@ MainGroupQuery makeMainGroupQuery(const MacroMolTemplate &templ,
 
   const std::unordered_set<unsigned int> mainAtomSet(sortedMainAtoms.begin(),
                                                      sortedMainAtoms.end());
-  auto query = std::make_unique<RWMol>(templ);
+  auto query = std::make_unique<RWMol>(templ.getMol());
   query->beginBatchEdit();
   for (auto atom : query->atoms()) {
     if (mainAtomSet.find(atom->getIdx()) == mainAtomSet.end()) {
