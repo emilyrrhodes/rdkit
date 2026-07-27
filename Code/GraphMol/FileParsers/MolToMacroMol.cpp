@@ -41,7 +41,7 @@ struct AttachmentPointSpec {
 };
 
 struct MacroAtomSpec {
-  MonomerClass monomerClass = MonomerClass::OTHER;
+  MonomerClass monomerClass = MonomerClass::Other;
   std::string symbol;
 };
 
@@ -379,8 +379,8 @@ std::unique_ptr<MacroMol> materialize(const ROMol &mol,
     const auto &atomSpec = macroMolSpec.atoms[outputIdx];
     unsigned int resultAtomIdx;
     if (atomSpec.macroAtom) {
-      resultAtomIdx = macroMol->addMacroAtom(atomSpec.macroAtom->monomerClass,
-                                             atomSpec.macroAtom->symbol);
+      resultAtomIdx = macroMol->addMacroAtom(atomSpec.macroAtom->symbol,
+                                             atomSpec.macroAtom->monomerClass);
     } else {
       const auto *sourceAtom =
           mol.getAtomWithIdx(atomSpec.sourceAtomIndices.front());

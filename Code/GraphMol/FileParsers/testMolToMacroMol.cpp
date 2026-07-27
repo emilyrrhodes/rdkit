@@ -38,7 +38,7 @@ std::shared_ptr<MacroMolEntry> makeMacroMolEntry(
   auto parsed = std::unique_ptr<RWMol>(SmilesToMol(smiles));
 
   auto macroTemplate = std::make_shared<MacroMolTemplate>(*parsed);
-  macroTemplate->setMainGroup(mainAtoms, MonomerClass::OTHER);
+  macroTemplate->setMainGroup(mainAtoms, MonomerClass::Other);
   for (const auto &leavingGroup : leavingGroups) {
     macroTemplate->addLeavingGroup(
         leavingGroup.atoms, leavingGroup.attachAtomIdx,
@@ -46,7 +46,7 @@ std::shared_ptr<MacroMolEntry> makeMacroMolEntry(
   }
 
   auto entry = std::make_shared<MacroMolEntry>();
-  entry->monomerClass = MonomerClass::OTHER;
+  entry->monomerClass = MonomerClass::Other;
   entry->templateName = templateName;
   entry->symbol = symbol;
   entry->molTemplate = macroTemplate;
@@ -78,7 +78,7 @@ TEST_CASE("MolToMacroMol minimal converter", "[MolToMacroMol]") {
     const auto *macroInfo = macroMol->getAtomWithIdx(0)->getMacroAtomInfo();
     REQUIRE(macroInfo);
     CHECK(macroInfo->getSymbol() == "L");
-    CHECK(macroInfo->getMonomerClass() == MonomerClass::OTHER);
+    CHECK(macroInfo->getMonomerClass() == MonomerClass::Other);
   }
 
   SECTION("equal-size templates preserve insertion order") {
@@ -101,7 +101,7 @@ TEST_CASE("MolToMacroMol minimal converter", "[MolToMacroMol]") {
     const auto *macroInfo = macroMol->getAtomWithIdx(0)->getMacroAtomInfo();
     REQUIRE(macroInfo);
     CHECK(macroInfo->getSymbol() == "F");
-    CHECK(macroInfo->getMonomerClass() == MonomerClass::OTHER);
+    CHECK(macroInfo->getMonomerClass() == MonomerClass::Other);
   }
 
   SECTION("single hit creates a macro atom and copies unmatched atoms") {
@@ -120,7 +120,7 @@ TEST_CASE("MolToMacroMol minimal converter", "[MolToMacroMol]") {
     const auto *macroInfo = macroAtom->getMacroAtomInfo();
     REQUIRE(macroInfo);
     CHECK(macroInfo->getSymbol() == "Et");
-    CHECK(macroInfo->getMonomerClass() == MonomerClass::OTHER);
+    CHECK(macroInfo->getMonomerClass() == MonomerClass::Other);
 
     const auto *copiedAtom = macroMol->getAtomWithIdx(1);
     CHECK(copiedAtom->getMacroAtomInfo() == nullptr);
@@ -206,13 +206,13 @@ TEST_CASE("MolToMacroMol minimal converter", "[MolToMacroMol]") {
     MacroMolTemplateLibrary templates;
 
     auto nullTemplate = std::make_shared<MacroMolEntry>();
-    nullTemplate->monomerClass = MonomerClass::AA;
+    nullTemplate->monomerClass = MonomerClass::AminoAcid;
     nullTemplate->templateName = "NULL";
     nullTemplate->symbol = "N";
     templates.addEntry(nullTemplate);
 
     auto noMainSgroup = std::make_shared<MacroMolEntry>();
-    noMainSgroup->monomerClass = MonomerClass::AA;
+    noMainSgroup->monomerClass = MonomerClass::AminoAcid;
     noMainSgroup->templateName = "NO_MAIN";
     noMainSgroup->symbol = "M";
     noMainSgroup->molTemplate = std::make_shared<MacroMolTemplate>();
@@ -331,7 +331,7 @@ TEST_CASE("MolToMacroMol minimal converter", "[MolToMacroMol]") {
   SECTION("addLeavingGroup rejects an attachment atom outside the main group") {
     auto parsed = std::unique_ptr<RWMol>(SmilesToMol("CCO"));
     MacroMolTemplate templ(*parsed);
-    templ.setMainGroup({0, 1}, MonomerClass::OTHER);
+    templ.setMainGroup({0, 1}, MonomerClass::Other);
     // Atom 2 is not part of the main group {0, 1}.
     CHECK_THROWS(templ.addLeavingGroup({2}, 2, 2, 1));
   }
