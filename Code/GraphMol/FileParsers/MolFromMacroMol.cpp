@@ -25,7 +25,7 @@ namespace RDKit {
 namespace {
 
 struct MacroAtomDetails {
-  MonomerClass monomerClass = MonomerClass::OTHER;
+  MonomerClass monomerClass = MonomerClass::Other;
   std::string label;
 };
 
