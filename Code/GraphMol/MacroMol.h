@@ -34,6 +34,8 @@ class RDKIT_GRAPHMOL_EXPORT MacroMol : public RWMol {
 
   MacroMol(const MacroMol &other);
   MacroMol &operator=(const MacroMol &other);
+  MacroMol(MacroMol &&other) noexcept = default;
+  MacroMol &operator=(MacroMol &&other) noexcept = default;
 
   //! Adds a template to this molecule's local template library.
   /*!

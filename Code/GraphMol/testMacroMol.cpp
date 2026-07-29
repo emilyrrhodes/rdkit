@@ -41,6 +41,8 @@ static_assert(std::is_same_v<
               decltype(std::declval<const MacroMol &>()
                            .getLocalTemplateLibrary()),
               const MacroMolTemplateLibrary &>);
+static_assert(std::is_nothrow_move_constructible_v<MacroMol>);
+static_assert(std::is_nothrow_move_assignable_v<MacroMol>);
 
 TEST_CASE("testBuildMacroMol") {
   // Build a simple MacroMol with three macro atoms and two bonds, and check
@@ -339,5 +341,29 @@ TEST_CASE("MacroMol copies have independent local template libraries") {
   CHECK(assignedTemplate != sourceTemplate);
   CHECK(assignedTemplate != copiedTemplate);
   CHECK(assigned.getLocalTemplateLibrary().entries().size() == 1);
+  CHECK(assigned.hasValidLocalTemplateReferences());
+}
+
+TEST_CASE("MacroMol moves its local template library") {
+  MacroMol source;
+  source.addLocalTemplate(makeMacroMolTemplate("ALA", "A"));
+  source.addMacroAtom("A", MonomerClass::AminoAcid);
+  const auto *sourceLibrary = &source.getLocalTemplateLibrary();
+  const auto *sourceTemplate = sourceLibrary->getBySymbol(
+      MonomerClass::AminoAcid, "A");
+  REQUIRE(sourceTemplate);
+
+  MacroMol moved(std::move(source));
+  CHECK(&moved.getLocalTemplateLibrary() == sourceLibrary);
+  CHECK(moved.getLocalTemplateLibrary().getBySymbol(
+            MonomerClass::AminoAcid, "A") == sourceTemplate);
+  CHECK(moved.hasValidLocalTemplateReferences());
+
+  MacroMol assigned;
+  assigned.addLocalTemplate(makeMacroMolTemplate("CYS", "C"));
+  assigned = std::move(moved);
+  CHECK(&assigned.getLocalTemplateLibrary() == sourceLibrary);
+  CHECK(assigned.getLocalTemplateLibrary().getBySymbol(
+            MonomerClass::AminoAcid, "A") == sourceTemplate);
   CHECK(assigned.hasValidLocalTemplateReferences());
 }
