@@ -31,26 +31,22 @@ struct LeavingGroupDef {
   int attachPoint;
 };
 
-std::shared_ptr<MacroMolEntry> makeMacroMolEntry(
+std::unique_ptr<MacroMolTemplate> makeMacroMolTemplate(
     const std::string &templateName, const std::string &symbol,
     const std::string &smiles, const std::vector<unsigned int> &mainAtoms,
     const std::vector<LeavingGroupDef> &leavingGroups = {}) {
   auto parsed = std::unique_ptr<RWMol>(SmilesToMol(smiles));
 
-  auto macroTemplate = std::make_shared<MacroMolTemplate>(*parsed);
-  macroTemplate->setMainGroup(mainAtoms, MonomerClass::Other);
+  auto macroTemplate = std::make_unique<MacroMolTemplate>(
+      *parsed, MonomerClass::Other, templateName, symbol, smiles);
+  macroTemplate->setMainGroup(mainAtoms);
   for (const auto &leavingGroup : leavingGroups) {
     macroTemplate->addLeavingGroup(
         leavingGroup.atoms, leavingGroup.attachAtomIdx,
         leavingGroup.leavingAtomIdx, leavingGroup.attachPoint);
   }
 
-  auto entry = std::make_shared<MacroMolEntry>();
-  entry->monomerClass = MonomerClass::Other;
-  entry->templateName = templateName;
-  entry->symbol = symbol;
-  entry->molTemplate = macroTemplate;
-  return entry;
+  return macroTemplate;
 }
 
 }  // namespace
@@ -59,15 +55,17 @@ TEST_CASE("MolToMacroMol minimal converter", "[MolToMacroMol]") {
   SECTION("larger template is tried before a smaller overlapping template") {
     MacroMolTemplateLibrary templates;
     auto small =
-        makeMacroMolEntry("SMALL", "S", "CCO", {0, 1}, {{{2}, 1, 2, 1}});
-    auto large = makeMacroMolEntry("LARGE", "L", "CCC", {0, 1, 2});
+        makeMacroMolTemplate("SMALL", "S", "CCO", {0, 1}, {{{2}, 1, 2, 1}});
+    auto large = makeMacroMolTemplate("LARGE", "L", "CCC", {0, 1, 2});
+    const auto *smallPtr = small.get();
+    const auto *largePtr = large.get();
 
-    templates.addEntry(small);
-    templates.addEntry(large);
+    templates.addTemplate(std::move(small));
+    templates.addTemplate(std::move(large));
 
     REQUIRE(templates.entries().size() == 2);
-    CHECK(templates.entries()[0] == large);
-    CHECK(templates.entries()[1] == small);
+    CHECK(templates.entries()[0] == largePtr);
+    CHECK(templates.entries()[1] == smallPtr);
 
     auto mol = SmilesToMol("CCC");
     auto macroMol = MolToMacroMol(*mol, templates);
@@ -83,15 +81,17 @@ TEST_CASE("MolToMacroMol minimal converter", "[MolToMacroMol]") {
 
   SECTION("equal-size templates preserve insertion order") {
     MacroMolTemplateLibrary templates;
-    auto first = makeMacroMolEntry("FIRST", "F", "CC", {0, 1});
-    auto second = makeMacroMolEntry("SECOND", "S", "CC", {0, 1});
+    auto first = makeMacroMolTemplate("FIRST", "F", "CC", {0, 1});
+    auto second = makeMacroMolTemplate("SECOND", "S", "CC", {0, 1});
+    const auto *firstPtr = first.get();
+    const auto *secondPtr = second.get();
 
-    templates.addEntry(first);
-    templates.addEntry(second);
+    templates.addTemplate(std::move(first));
+    templates.addTemplate(std::move(second));
 
     REQUIRE(templates.entries().size() == 2);
-    CHECK(templates.entries()[0] == first);
-    CHECK(templates.entries()[1] == second);
+    CHECK(templates.entries()[0] == firstPtr);
+    CHECK(templates.entries()[1] == secondPtr);
 
     auto mol = SmilesToMol("CC");
     auto macroMol = MolToMacroMol(*mol, templates);
@@ -106,8 +106,8 @@ TEST_CASE("MolToMacroMol minimal converter", "[MolToMacroMol]") {
 
   SECTION("single hit creates a macro atom and copies unmatched atoms") {
     MacroMolTemplateLibrary templates;
-    templates.addEntry(
-        makeMacroMolEntry("ETHYL", "Et", "CCO", {0, 1}, {{{2}, 1, 2, 1}}));
+    templates.addTemplate(makeMacroMolTemplate(
+        "ETHYL", "Et", "CCO", {0, 1}, {{{2}, 1, 2, 1}}));
 
     auto mol = SmilesToMol("CCC");
     auto macroMol = MolToMacroMol(*mol, templates);
@@ -138,8 +138,8 @@ TEST_CASE("MolToMacroMol minimal converter", "[MolToMacroMol]") {
   SECTION(
       "symmetric template orientations are kept for attachment validation") {
     MacroMolTemplateLibrary templates;
-    templates.addEntry(
-        makeMacroMolEntry("ETHYL", "Et", "CCO", {0, 1}, {{{2}, 1, 2, 1}}));
+    templates.addTemplate(makeMacroMolTemplate(
+        "ETHYL", "Et", "CCO", {0, 1}, {{{2}, 1, 2, 1}}));
 
     auto mol = SmilesToMol("NCC");
     auto macroMol = MolToMacroMol(*mol, templates);
@@ -163,7 +163,8 @@ TEST_CASE("MolToMacroMol minimal converter", "[MolToMacroMol]") {
 
   SECTION("unannotated external bonds reject a template hit") {
     MacroMolTemplateLibrary templates;
-    templates.addEntry(makeMacroMolEntry("ETHYL", "Et", "CC", {0, 1}));
+    templates.addTemplate(
+        makeMacroMolTemplate("ETHYL", "Et", "CC", {0, 1}));
 
     auto mol = SmilesToMol("CCC");
     std::unique_ptr<MacroMol> macroMol;
@@ -182,8 +183,9 @@ TEST_CASE("MolToMacroMol minimal converter", "[MolToMacroMol]") {
 
   SECTION("external bonds between template hits become macro bonds") {
     MacroMolTemplateLibrary templates;
-    templates.addEntry(makeMacroMolEntry("CO_UNIT", "X", "NCON", {1, 2},
-                                         {{{0}, 1, 0, 1}, {{3}, 2, 3, 2}}));
+    templates.addTemplate(makeMacroMolTemplate(
+        "CO_UNIT", "X", "NCON", {1, 2},
+        {{{0}, 1, 0, 1}, {{3}, 2, 3, 2}}));
 
     auto mol = SmilesToMol("COCO");
     auto macroMol = MolToMacroMol(*mol, templates);
@@ -202,48 +204,13 @@ TEST_CASE("MolToMacroMol minimal converter", "[MolToMacroMol]") {
           static_cast<unsigned int>(Bond::BondType::SINGLE));
   }
 
-  SECTION("entries without usable templates are skipped") {
-    MacroMolTemplateLibrary templates;
-
-    auto nullTemplate = std::make_shared<MacroMolEntry>();
-    nullTemplate->monomerClass = MonomerClass::AminoAcid;
-    nullTemplate->templateName = "NULL";
-    nullTemplate->symbol = "N";
-    templates.addEntry(nullTemplate);
-
-    auto noMainSgroup = std::make_shared<MacroMolEntry>();
-    noMainSgroup->monomerClass = MonomerClass::AminoAcid;
-    noMainSgroup->templateName = "NO_MAIN";
-    noMainSgroup->symbol = "M";
-    noMainSgroup->molTemplate = std::make_shared<MacroMolTemplate>();
-    templates.addEntry(noMainSgroup);
-
-    auto mol = SmilesToMol("C");
-    auto macroMol = MolToMacroMol(*mol, templates);
-
-    REQUIRE(macroMol);
-    CHECK(macroMol->getNumAtoms() == 1);
-    // The unmatched atom is carried through unchanged.
-    CHECK(macroMol->getAtomWithIdx(0)->getAtomicNum() == 6);
-  }
-
-  SECTION("re-adding the same entry does not duplicate it") {
-    MacroMolTemplateLibrary templates;
-    auto entry = makeMacroMolEntry("DUP", "D", "CC", {0, 1});
-
-    templates.addEntry(entry);
-    templates.addEntry(entry);
-
-    CHECK(templates.entries().size() == 1);
-  }
-
   SECTION("an attachment atom may have at most one external bond") {
     // A single-atom main group with one attachment point. When it matches an
     // atom that carries two bonds leaving the monomer, the hit is rejected
     // rather than reusing the single attach point for both crossing bonds.
     MacroMolTemplateLibrary templates;
-    templates.addEntry(
-        makeMacroMolEntry("METHYL", "Me", "CO", {0}, {{{1}, 0, 1, 1}}));
+    templates.addTemplate(makeMacroMolTemplate(
+        "METHYL", "Me", "CO", {0}, {{{1}, 0, 1, 1}}));
 
     auto mol = SmilesToMol("CCC");
     std::unique_ptr<MacroMol> macroMol;
@@ -330,8 +297,8 @@ TEST_CASE("MolToMacroMol minimal converter", "[MolToMacroMol]") {
 
   SECTION("addLeavingGroup rejects an attachment atom outside the main group") {
     auto parsed = std::unique_ptr<RWMol>(SmilesToMol("CCO"));
-    MacroMolTemplate templ(*parsed);
-    templ.setMainGroup({0, 1}, MonomerClass::Other);
+    MacroMolTemplate templ(*parsed, MonomerClass::Other, "ETHYL", "Et", "CCO");
+    templ.setMainGroup({0, 1});
     // Atom 2 is not part of the main group {0, 1}.
     CHECK_THROWS(templ.addLeavingGroup({2}, 2, 2, 1));
   }

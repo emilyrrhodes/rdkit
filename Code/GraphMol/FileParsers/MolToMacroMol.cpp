@@ -117,7 +117,7 @@ MainGroupQuery makeMainGroupQuery(const MacroMolTemplate &templ,
 
   const std::unordered_set<unsigned int> mainAtomSet(sortedMainAtoms.begin(),
                                                      sortedMainAtoms.end());
-  auto query = std::make_unique<RWMol>(templ.getMol());
+  auto query = std::make_unique<RWMol>(templ);
   query->beginBatchEdit();
   for (auto atom : query->atoms()) {
     if (mainAtomSet.find(atom->getIdx()) == mainAtomSet.end()) {
@@ -261,30 +261,25 @@ std::optional<AtomSpec> buildAtomSpecForMatch(
   return atomSpec;
 }
 
-void recordAcceptedAtomSpec(const MacroMolEntry &entry, AtomSpec atomSpec,
+void recordAcceptedAtomSpec(const MacroMolTemplate &templ, AtomSpec atomSpec,
                             MacroMolSpec &macroMolSpec) {
-  atomSpec.macroAtom = MacroAtomSpec{entry.monomerClass, entry.symbol};
+  atomSpec.macroAtom =
+      MacroAtomSpec{templ.getMonomerClass(), templ.getSymbol()};
   macroMolSpec.addAtom(std::move(atomSpec));
 }
 
-void addTemplateMatchesToSpec(const ROMol &mol, const MacroMolEntry &entry,
+void addTemplateMatchesToSpec(const ROMol &mol,
+                              const MacroMolTemplate &templ,
                               MacroMolSpec &macroMolSpec) {
-  if (!entry.molTemplate) {
-    return;
-  }
-
-  const auto &templ = *entry.molTemplate;
   const auto *mainSgroup = templ.getMainSgroup();
-  if (!mainSgroup) {
-    return;
-  }
+  CHECK_INVARIANT(mainSgroup, "registered template has no main group");
 
   const auto mainQuery = makeMainGroupQuery(templ, *mainSgroup);
   for (const auto &match : findTemplateMatches(mol, *mainQuery.query)) {
     auto atomSpec =
         buildAtomSpecForMatch(match, mol, templ, mainQuery, macroMolSpec);
     if (atomSpec) {
-      recordAcceptedAtomSpec(entry, std::move(*atomSpec), macroMolSpec);
+      recordAcceptedAtomSpec(templ, std::move(*atomSpec), macroMolSpec);
     }
   }
 }
@@ -307,8 +302,8 @@ void groupSourceAtoms(const ROMol &mol,
                       MacroMolSpec &macroMolSpec) {
   // templates.entries() is ordered largest-main-group-first, so larger monomers
   // claim their atoms before smaller ones.
-  for (const auto &entry : templates.entries()) {
-    addTemplateMatchesToSpec(mol, *entry, macroMolSpec);
+  for (const auto *templ : templates.entries()) {
+    addTemplateMatchesToSpec(mol, *templ, macroMolSpec);
   }
   // Must run after all template matches so it only picks up genuine leftovers.
   addUnmatchedAtomsToSpec(mol, macroMolSpec);
