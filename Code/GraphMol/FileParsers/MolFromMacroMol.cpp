@@ -59,12 +59,11 @@ std::string getAttachPointId(int attachPoint) {
 
 const MacroMolTemplate *findTemplate(
     const MacroMolTemplateLibrary &templates, const MacroAtomDetails &info) {
-  std::shared_ptr<MacroMolEntry> entry =
-      templates.getBySymbol(info.monomerClass, info.label);
-  if (!entry) {
-    entry = templates.getByTemplateName(info.monomerClass, info.label);
+  const auto *templ = templates.getBySymbol(info.monomerClass, info.label);
+  if (!templ) {
+    templ = templates.getByTemplateName(info.monomerClass, info.label);
   }
-  return entry ? entry->molTemplate.get() : nullptr;
+  return templ;
 }
 
 void addBondCopy(RWMol &result, const Bond &oldBond,
@@ -136,8 +135,7 @@ void rememberTemplateAttachPoints(ExpandedMacroAtom &expanded,
 void copyTemplateAtoms(BuildState &state, ExpandedMacroAtom &expanded,
                        const MacroMolTemplate &templ,
                        const std::set<unsigned int> &atomsToSkip) {
-  const auto templMol = templ.getMol();
-  for (const auto *oldAtom : templMol.atoms()) {
+  for (const auto *oldAtom : templ.atoms()) {
     if (atomsToSkip.find(oldAtom->getIdx()) != atomsToSkip.end()) {
       continue;
     }
@@ -150,8 +148,7 @@ void copyTemplateAtoms(BuildState &state, ExpandedMacroAtom &expanded,
 
 void copyTemplateBonds(BuildState &state, const ExpandedMacroAtom &expanded,
                        const MacroMolTemplate &templ) {
-  const auto templMol = templ.getMol();
-  for (const auto *oldBond : templMol.bonds()) {
+  for (const auto *oldBond : templ.bonds()) {
     const auto beginAtom =
         expanded.templateToResultAtom.find(oldBond->getBeginAtomIdx());
     const auto endAtom =
