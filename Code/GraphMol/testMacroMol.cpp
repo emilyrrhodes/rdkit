@@ -233,7 +233,7 @@ TEST_CASE("MacroMol owns a local template library") {
     CHECK(alanine == nullptr);
     CHECK(macroMol.getLocalTemplateLibrary().getBySymbol(
               MonomerClass::AminoAcid, "A") == alaninePtr);
-    CHECK(macroMol.getLocalTemplateLibrary().getByTemplateName(
+    CHECK(macroMol.getLocalTemplateLibrary().getByName(
               MonomerClass::AminoAcid, "ALA") == alaninePtr);
   }
 

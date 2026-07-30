@@ -75,7 +75,7 @@ bool MacroMol::hasValidLocalTemplateReferences() const {
     const auto monomerClass = macroAtomInfo->getMonomerClass();
     const auto &symbol = macroAtomInfo->getSymbol();
     if (!dp_localTemplateLibrary->getBySymbol(monomerClass, symbol) &&
-        !dp_localTemplateLibrary->getByTemplateName(monomerClass, symbol)) {
+        !dp_localTemplateLibrary->getByName(monomerClass, symbol)) {
       return false;
     }
   }
