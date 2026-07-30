@@ -163,7 +163,7 @@ TEST_CASE("Global MacroMol template library contains built-in amino acids",
     CHECK(bySymbol->getMonomerClass() == monomerClass);
 
     const auto *byTemplateName =
-        templates.getByTemplateName(monomerClass, templateName);
+        templates.getByName(monomerClass, templateName);
     INFO("templateName: " << templateName);
     REQUIRE(byTemplateName);
     CHECK(byTemplateName == bySymbol);
@@ -181,7 +181,7 @@ TEST_CASE("addBuiltinMacroMolTemplates populates another library",
   CHECK(alanine->getTemplateName() == "ALA");
 
   const auto *glycine =
-      templates.getByTemplateName(MonomerClass::AminoAcid, "GLY");
+      templates.getByName(MonomerClass::AminoAcid, "GLY");
   REQUIRE(glycine);
   CHECK(glycine->getSymbol() == "G");
 
@@ -227,7 +227,7 @@ TEST_CASE("Built-in MacroMol templates use direct group definitions",
           "[MolFromMacroMol]") {
   const auto &templates = getGlobalMacroMolTemplateLibrary();
   const auto *alanineTemplate =
-      templates.getByTemplateName(MonomerClass::AminoAcid, "ALA");
+      templates.getByName(MonomerClass::AminoAcid, "ALA");
   REQUIRE(alanineTemplate);
 
   for (const auto *atom : alanineTemplate->atoms()) {
@@ -263,7 +263,7 @@ TEST_CASE("Built-in MacroMol templates include side-chain leaving groups",
           "[MolFromMacroMol]") {
   const auto &templates = getGlobalMacroMolTemplateLibrary();
   const auto *cysteineTemplate =
-      templates.getByTemplateName(MonomerClass::AminoAcid, "CYS");
+      templates.getByName(MonomerClass::AminoAcid, "CYS");
   REQUIRE(cysteineTemplate);
 
   auto leavingGroups = cysteineTemplate->getLeavingGroups();
