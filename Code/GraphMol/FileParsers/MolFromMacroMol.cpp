@@ -61,7 +61,7 @@ const MacroMolTemplate *findTemplate(
     const MacroMolTemplateLibrary &templates, const MacroAtomDetails &info) {
   const auto *templ = templates.getBySymbol(info.monomerClass, info.label);
   if (!templ) {
-    templ = templates.getByTemplateName(info.monomerClass, info.label);
+    templ = templates.getByName(info.monomerClass, info.label);
   }
   return templ;
 }
